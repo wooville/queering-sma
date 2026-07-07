@@ -1,0 +1,4 @@
+imgui-bundle==1.92.801
+numpy==2.5.0
+pyglet==2.1.15
+PyOpenGL==3.1.10
