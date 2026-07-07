@@ -17,14 +17,13 @@ HEIGHT = int(512*1.25)
 
 FRAME_RATE = 144.0
 TIME_STEP_FACTOR = 4.0
-AGENTS_NUMBER = 2500
+AGENTS_NUMBER = 500
 # AGENTS_COLOR = new Uint8Array([0, 0, 0]);
 AGENT_SCALE_FACTOR = 1.0
-SENSOR_OFFSET = 10
-SENSOR_ANGLE = math.pi / 4
-TURN_ANGLE = math.pi / 9
-STEP_SIZE = 1
-
+# SENSOR_OFFSET = -10
+# SENSOR_ANGLE = math.pi / 4
+# TURN_ANGLE = math.pi / 9
+# STEP_SIZE = 1
 
 param_time_step_factor = 1.0
 param_agents_number = 2500
@@ -34,6 +33,7 @@ param_sensor_offset = 10
 param_sensor_angle = math.pi / 4
 param_turn_angle = math.pi / 9
 param_step_size = 1
+param_trail_decay = 0.92
 
 # random.seed(0)
 window = pyglet.window.Window(WIDTH, HEIGHT)
@@ -102,7 +102,7 @@ class Environment(Observer):
         global screen
         # trail_map = trail_map-0.1
         # trail_map = np.round(trail_map*0.99, 2)
-        trail_map_test = np.uint8(trail_map_test*0.92)
+        trail_map_test = np.uint8(trail_map_test*param_trail_decay)
         # screen = np.round(screen*0.99, 2)
         screen = trail_map_test
         
@@ -159,9 +159,9 @@ class Agent(Observer):
         self.y = random.randint(window.height // 2 - window.height // 12, window.height // 2 + window.height // 12)
         self.dir = (random.random()*2*math.pi)
 
-        self.sensor_offset = SENSOR_OFFSET
-        self.sensor_angle = SENSOR_ANGLE
-        self.turn_angle = TURN_ANGLE
+        self.sensor_offset = param_sensor_offset
+        self.sensor_angle = param_sensor_angle
+        self.turn_angle = param_turn_angle
 
         # pixel_map[self.get_index()] = -1
 
@@ -177,18 +177,18 @@ class Agent(Observer):
         # self.square.y = self.y
     
     def update_direction(self):
-        left = self.sense(-self.sensor_angle)
+        left = self.sense(-param_sensor_angle)
         center = self.sense(0)
-        right = self.sense(+self.sensor_angle)
+        right = self.sense(+param_sensor_angle)
         
         if (center > left and center > right):
             pass
         elif (center < left and center > right):
-            if (np.random.rand() < 0.5): self.dir += self.turn_angle
+            if (np.random.rand() < 0.5): self.dir += param_turn_angle
         elif (left > right):
-            self.dir += -self.turn_angle
+            self.dir += -param_turn_angle
         elif (right > left):
-            self.dir += self.turn_angle
+            self.dir += param_turn_angle
 
 
         # threeWays = [left, center - 1 , right]
@@ -197,8 +197,8 @@ class Agent(Observer):
   
     def sense(self, dir_offset):
         angle = self.dir + dir_offset
-        x = math.floor(self.x + self.sensor_offset * math.cos(angle))
-        y = math.floor(self.y + self.sensor_offset * math.sin(angle))
+        x = math.floor(self.x + param_sensor_offset * math.cos(angle))
+        y = math.floor(self.y + param_sensor_offset * math.sin(angle))
         x = (x + window.width) % window.width
         y = (y + window.height) % window.height
 
@@ -207,15 +207,15 @@ class Agent(Observer):
 
         # index = (x + y * window.width)*4
         # return trail_map[index]
-        return max(screen[x, y, :])
+        return max(screen[y, x, :])
         # return max(trail_map_test[int(self.y)][int(self.x)][:])
     
     def update_position(self):
         # for i in range(STEP_SIZE):
         self.deposit()
 
-        self.x += math.cos(self.dir)*STEP_SIZE
-        self.y += math.sin(self.dir)*STEP_SIZE
+        self.x += math.cos(self.dir)*param_step_size
+        self.y += math.sin(self.dir)*param_step_size
         self.x = (self.x + window.width) % window.width
         self.y = (self.y + window.height) % window.height
 
@@ -232,46 +232,73 @@ class Agent(Observer):
         # trail_map[self.get_index()] = 1.0
 
 
-agents = np.empty(AGENTS_NUMBER, Agent)
+agents = np.empty(param_agents_number, Agent)
 agent_timer = AgentTimer()
 
 env = Environment(agent_timer)
-for i in range(AGENTS_NUMBER):
+for i in range(param_agents_number):
     agents[i] = Agent(agent_timer)
 
 @window.event
 def on_draw():
     window.clear()
-    # image_data.blit(0, 0)
+
     batch_trail.draw()
-    batch_agents.draw()
-    # batch_gui.draw()
-    # label.draw()
+    # batch_agents.draw()
+
+    draw_gui()
+
+# user_text = "Initial text"
+
+def draw_gui():
+    # global show_demo_window, counter, user_text
+    global param_agents_number, param_step_size, param_sensor_offset, param_sensor_angle, param_turn_angle, param_time_step_factor, param_trail_decay
 
     imgui.new_frame()
-    global show_demo_window, counter
-    imgui.begin("Pyglet Integration Panel")
-    imgui.text("Hello from Dear ImGui Bundle running inside Pyglet!")
+    imgui.begin("Parameter Palette")
+    # imgui.text("Adjust parameters here!")
 
     # Checkbox toggle for original demo window
-    _, show_demo_window = imgui.checkbox("Show ImGui Demo Window", show_demo_window)
+    # _, show_demo_window = imgui.checkbox("Show ImGui Demo Window", show_demo_window)
     
     # Interactive Button logic
-    if imgui.button("Increment Counter"):
-        counter += 1
-    imgui.same_line()
-    imgui.text(f"Button clicks: {counter}")
+    # if imgui.button("Increment Counter"):
+    #     counter += 1
+    # imgui.same_line()
+    # imgui.text(f"Button clicks: {counter}")
     # imgui.slider_int("AGENTS_NUMBER",)
+
+    changed_param_agents_number, param_agents_number = imgui.slider_int(
+        "AGENTS_NUMBER", param_agents_number, v_min=0, v_max=5000
+    )
+    changed_param_step_size, param_step_size = imgui.slider_int(
+        "STEP_SIZE", param_step_size, v_min=0, v_max=100
+    )
+    changed_param_sensor_offset, param_sensor_offset = imgui.slider_int(
+        "SENSOR_OFFSET", param_sensor_offset, v_min=-300, v_max=300
+    )
+    changed_param_sensor_angle, param_sensor_angle = imgui.slider_float(
+        "SENSOR_ANGLE", param_sensor_angle, v_min=-math.pi, v_max=math.pi
+    )
+    changed_param_turn_angle, param_turn_angle = imgui.slider_float(
+        "TURN_ANGLE", param_turn_angle, v_min=-math.pi, v_max=math.pi
+    )
+    changed_param_trail_decay, param_trail_decay = imgui.slider_float(
+        "TRAIL_DECAY", param_trail_decay, v_min=0, v_max=1
+    )
+
+    # imgui.spacing()
+
+    # changed, user_text = imgui.input_text("Label Here", user_text)
 
     imgui.end()
 
     # If requested, display the engine standard Demo Window
-    if show_demo_window:
-        imgui.show_demo_window()
-
+    # if show_demo_window:
+    #     imgui.show_demo_window()
+    
     imgui.render()
     renderer.render(imgui.get_draw_data())
-
 
 @window.event
 def on_key_press(symbol, modifiers):
