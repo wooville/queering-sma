@@ -1,3 +1,6 @@
+<img width="640" height="638" alt="image" src="https://github.com/user-attachments/assets/a32ff0a2-8341-47fe-8294-c26d24ac15b2" />
+<img width="638" height="642" alt="image" src="https://github.com/user-attachments/assets/d7e7dd14-0adf-416c-b12a-91272b976458" />
+
 **First time setup**
 1. Download and install [Python 3.14](https://www.python.org/downloads/)
 2. Clone (or download and unzip) this repository in an empty folder on your computer
@@ -29,6 +32,3 @@
    ```
    python main.py
    ```
-
-<img width="640" height="638" alt="image" src="https://github.com/user-attachments/assets/a32ff0a2-8341-47fe-8294-c26d24ac15b2" />
-<img width="638" height="642" alt="image" src="https://github.com/user-attachments/assets/d7e7dd14-0adf-416c-b12a-91272b976458" />
