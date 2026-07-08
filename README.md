@@ -18,10 +18,10 @@ An interactive explanation of the algorithm is available [here](https://denizbic
 ## Glossary
 - **Program**: a catch-all term very broadly referring to a list of instructions that we want a computer to perform; in our case, our main.py file is a Python script, which is a type of program
 - **Programming language**: a strictly defined set of rules (and associated tools) that we can use to write our own programs
-- **Python**: an accessible and flexible programming language; must download and install Python on your computer to run Python scripts!
+- [**Python**](https://www.python.org/): an accessible and flexible programming language; must download and install Python on your computer to run Python scripts!
 	- **Dependency**: pre-existing Python code from the wider community that our code "depends" on to function; must be downloaded and installed into a Python environment
 	- **Virtual environment**: an isolated Python environment on your computer to keep this project and its installed dependencies separate from any other Python projects; must be "activated" from the Terminal
-- **Terminal**: a text-based ("command-line") interface packaged with your computer that allows you to handle technical tasks like file management and executing programs
+- [**Terminal**](https://www.technigo.io/explained/what-is-the-terminal): a text-based ("command-line") interface packaged with your computer that allows you to handle technical tasks like file management and executing programs
 	- **Commands**: the text that we input into the terminal to tell it what to do; if you cannot use Python related commands after installing Python, try closing the terminal and opening a new one
 
 ## Instructions
