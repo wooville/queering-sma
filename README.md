@@ -1,4 +1,4 @@
-First time setup
+**First time setup**
 1. Download and install [Python 3.14](https://www.python.org/downloads/)
 2. Clone (or download and unzip) this repository in an empty folder on your computer
 3. Open a terminal and navigate to the folder containing the repository using command
@@ -9,7 +9,7 @@ First time setup
 	```
 	python -m venv .venv
  	```
-5. Activate the virtual environment inside of the terminal using the command below:
+5. Activate the virtual environment inside of the terminal using the command
 	```
 	Windows:		.venv\Scripts\activate.bat
 	macOS\linux:	source .venv\Scripts\activate
@@ -18,13 +18,14 @@ First time setup
    ```
    pip install -r requirements.txt
    ```
-Running the program
-1. activate the existing virtual environment using the command
+
+**Running the program**
+1. Activate the existing virtual environment using the command
    ```
    Windows:			.venv\Scripts\activate.bat
    macOS\linux:		source .venv\Scripts\activate
    ```
-3. run the program using the command
+3. Run the program using the command
    ```
    python main.py
    ```
