@@ -17,3 +17,6 @@ Running the program
 	macOS\linux:	"source .venv\Scripts\activate"
 2. run the program using the command
 	"python main.py"
+
+<img width="640" height="638" alt="image" src="https://github.com/user-attachments/assets/a32ff0a2-8341-47fe-8294-c26d24ac15b2" />
+<img width="638" height="642" alt="image" src="https://github.com/user-attachments/assets/d7e7dd14-0adf-416c-b12a-91272b976458" />
