@@ -11,17 +11,19 @@ from imgui_bundle.python_backends.pyglet_backend import create_renderer
 glEnable(GL_TEXTURE_2D)
 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST)
 
+# constants
 # window dimensions
 WIDTH = int(512*1.25)
 HEIGHT = int(512*1.25)
 
-# constants
 FRAME_RATE = 60.0           # how many times/second does the program update (ie simulation speed); tihs is a maximum value limited by performance
 AGENT_SCALE_FACTOR = 1.0    # scale of drawn agent sprites (does not affect logic)
 
-# gui-adjustable parameters
-param_time_step_factor = 1.0        #NOTE must restart to take effect
-param_agents_number = 1000          #NOTE must restart to take effect
+# parameters
+# all agents use these parameters
+# these parameters are adjustable in the GUI
+param_time_step_factor = 1.0        # NOTE must restart to take effect
+param_agents_number = 1000          # NOTE must restart to take effect
 param_sensor_offset = 10            #
 param_sensor_angle = math.pi / 4    #
 param_turn_angle = math.pi / 9      #
@@ -35,41 +37,39 @@ param_drift_weight = math.pi / 12   #
 # other gui/state tracking vars
 show_trail = True
 show_agents = True
+show_fps = False
 # counter = 0
 
 # for reproducibility (haven't tested much)
 # random.seed(0)
 # np.random.seed(0)
 
-# window containing the program
+# create the window containing the program
 window = pyglet.window.Window(WIDTH, HEIGHT)
+fps_display = pyglet.window.FPSDisplay(window=window)
 
-# for efficient rendering of many sprites at once 
+# for efficient rendering of many sprites at once, we assign them to one of these batches
 batch_trail = pyglet.graphics.Batch()
 batch_agents = pyglet.graphics.Batch()
 
-# create 
+# define the format of the image that we draw the trail with
+# RGBA format: Red Green Blue Alpha -> Alpha = opacity
 RGB_CHANNELS = 4
 MAX_COLOR = 255
 IMG_FORMAT = 'RGBA'
 pitch = WIDTH * RGB_CHANNELS
 
-screen = np.zeros(
-    [HEIGHT, WIDTH, RGB_CHANNELS], dtype=np.uint8
-)
+# create an empty canvas that corresponds to the size of the window
+# this is a 3D array; each pixel on the screen (2D) has 4 values associated with it that collectively describe the color/opacity of that pixel (RGBA)
+# pixels/colors are just an example for visualization, you can also think of it as a 2D grid that agents deposit their trails onto
+# if there's no trail at a location, it's 
 trail_map = np.zeros(
-    [HEIGHT, WIDTH, RGB_CHANNELS], dtype=np.uint8
+    [HEIGHT, WIDTH, RGB_CHANNELS], dtype=np.uint8 # note that height/width are swapped, don't worry too much about it...
 )
 
-# pyglet.gl.glClearColor(random.random(), random.random(), random.random(), 1.0)
-
-# unused multimedia functions
-
-# image = pyglet.resource.image('kitten.jpg')
-# music = pyglet.resource.media('music.mp3')
-# music.play()
-# sound = pyglet.resource.media('shot.wav', streaming=False)
-# sound.play()
+# Don't worry too much about Observer and SimulationTimer
+# Here, we define the timer that our simulation runs on
+# Our Agents and Environment "observe" the SimulationTimer so that they know when to update
 
 # Abstract observer class
 class Observer:
@@ -79,13 +79,15 @@ class Observer:
 # The subject
 class SimulationTimer(pyglet.event.EventDispatcher):
     def tick(self):
-        self.dispatch_event('on_update')
+        self.dispatch_event('on_update') # tell everyone to update
 
 SimulationTimer.register_event_type('on_update')
 
-# an object class representing a single agent
-# agents move and turn sense the trail_map 
+# Here, we define the behaviour of each individual agent
+# When we run the program, we will create many of these agents that act based on our code here
+# Agents move and turn  based on information retrieved by sensing the trail_map around them 
 class Agent(Observer):
+    # every time we create an Agent, we first initialize it based on this function
     def __init__(self, subject):
         subject.push_handlers(self)
         
@@ -94,25 +96,27 @@ class Agent(Observer):
         # self.y = window.height / 2
         # self.dir = math.pi
         
+        # Here, we initialize this individual agent's important variables (current position and direction)
+        # These self.variable values are accessible in our other functions after this point
         # this code spawns agents randomly near the center of the window
         self.x = random.randint(window.width // 2 - window.width // 16, window.width // 2 + window.width // 16)
         self.y = random.randint(window.height // 2 - window.height // 16, window.height // 2 + window.height // 16)
         self.dir = (random.random()*math.pi)    # current direction in radians
 
         # assign a random color to this agent
-        # RGBA format: red green blue alpha -> alpha = transparency
+        # RGBA format: Red Green Blue Alpha -> alpha = opacity
         self.color = (random.randint(0,255), random.randint(0,255), random.randint(0,255), 255)
 
-        # assign a sprite to this agent
+        # assign a sprite to this agent (so we can draw it) and give it our (x,y) position, color
         self.sprite = pyglet.shapes.Rectangle(x=self.x, y=self.y, width=AGENT_SCALE_FACTOR, height=AGENT_SCALE_FACTOR, color=self.color, batch=batch_agents)
 
-        # we could consider agents with individual parameters, instead of using the global parameters for all agents (tangential)
+        # we could consider agents with individual parameters, instead of using the same global parameters for all agents (tangential)
         # self.sensor_offset = param_sensor_offset
         # self.sensor_angle = param_sensor_angle
         # self.turn_angle = param_turn_angle
         # ...
 
-    # called every frame: update direction and position based on parameter values
+    # called every frame: update direction and position based on global parameter values
     def on_update(self):
         self.update_direction()
         self.update_position()
@@ -158,9 +162,8 @@ class Agent(Observer):
         x = (x + window.width) % window.width
         y = (y + window.height) % window.height
         
-        # # return the trail at this location
-        return trail_map[y, x, :][3] # alpha channel (highest trail intensity)
-        # return screen[y, x, :][3] # screen is the copy of trail_map that we want to draw
+        # # return the trail at this location (specifically the opacity; we ignore the color)
+        return trail_map[y, x, :][3] # [3] is the alpha channel (highest trail intensity)
     
     # move self one step and update agent sprite
     def update_position(self):
@@ -192,13 +195,15 @@ class Agent(Observer):
         # else: trail_map[int(self.y)][int(self.x)][:] = param_trail_map_color
 
 # object class that updates the environment that agents interact with
+# we will create a single Environment, and all it does is update the value of the trail_map
 class Environment(Observer):
     def __init__(self, subject):
+        global trail_map # use the global trail_map we made earlier
         subject.push_handlers(self)
 
         # image_data draws to the screen
         self.image_data = pyglet.image.ImageData(
-            WIDTH, HEIGHT, IMG_FORMAT, screen.tobytes(), pitch
+            WIDTH, HEIGHT, IMG_FORMAT, trail_map.tobytes(), pitch
         )
         
         # sprite is the visualization of the trail map
@@ -206,16 +211,68 @@ class Environment(Observer):
     
     # called every frame by SimulationTimer: decay trail and update associated pixels 
     def on_update(self):
-        global trail_map, screen # use the global variables
+        global trail_map # use the global trail_map we made earlier
 
-        # decay trails
+        # decay trails, making sure that we're storing valid numbers into trail_map (our RGBA format)
         trail_map = np.uint8(trail_map*param_trail_decay)
-        
-        # update the trail image to be drawn by the window
-        screen = trail_map
-        self.image_data.set_data(IMG_FORMAT, pitch, screen.tobytes()) # turn the colors into bytes and store it as an image
+
+        self.image_data.set_data(IMG_FORMAT, pitch, trail_map.tobytes()) # turn the colors into bytes and store it as an image
         self.sprite.image = self.image_data # this is the sprite drawn by the window every frame
 
+agents = np.empty(param_agents_number, Agent)
+env = None
+
+# make a simulation timer and the update function (tick)
+simulation_timer = SimulationTimer()
+def update_loop(dt):
+    simulation_timer.tick()
+
+# reset the simulation state (but not the parameters)
+def restart_sim():
+    global trail_map, agents, env, simulation_timer, update_loop # make sure we use the same set of variables when we reset, otherwise we're making new ones!
+    pyglet.app.exit()
+    pyglet.clock.unschedule(update_loop)
+    
+    trail_map = np.zeros(
+    [HEIGHT, WIDTH, RGB_CHANNELS], dtype=np.uint8 # note that height/width are swapped, don't worry too much about it...
+    )
+
+    # simulation_timer runs the main loop of the simulation
+    # dt = delta time; amount of time elapsed between updates (1/frame_rate)
+    # everything else in the simulation (Environment and Agents) updates when simulation_timer.tick() is called
+    
+    # create our agents according to parameters
+    agents = np.empty(param_agents_number, Agent)
+    for i in range(param_agents_number):
+        agents[i] = Agent(simulation_timer) # each agent observes the same simulation timer
+    
+    # create our environment and give it the simulation timer to observe
+    env = Environment(simulation_timer)
+
+    # set the update_loop (tick the simulation timer) we want to run and the interval (framerate)
+    pyglet.clock.schedule_interval(update_loop, 1/(FRAME_RATE*param_max_time_scale_factor))  # update at FRAME_RATE Hz (FRAME_RATE updates/second)
+    pyglet.app.run()
+    # print("wow")
+
+### window functions for drawing each frame and input processing, can ignore
+# create the objects we use for rendering the gui
+imgui.create_context()
+renderer = create_renderer(window)
+
+# the window executes this function when we press any key
+@window.event
+def on_key_press(symbol, modifiers):
+    if symbol == key.R:
+        print('Restarting simulation!')
+        restart_sim()
+    elif symbol == key.F:
+        global show_fps
+        print('FPS display toggled')
+        show_fps = not show_fps
+    # elif symbol == key.ENTER:
+    #     print('The enter key was pressed.')
+
+# the window uses this function to draw each frame
 @window.event
 def on_draw():
     # erase the previous frame drawing
@@ -224,6 +281,7 @@ def on_draw():
     # draw the trail map sprite before (underneath) the agent sprites
     if show_trail: batch_trail.draw()
     if show_agents: batch_agents.draw()
+    if show_fps: fps_display.draw()
 
     # draw the gui on top of everything
     draw_gui()
@@ -253,7 +311,7 @@ def draw_gui():
         "STEP_SIZE", param_step_size, v_min=0, v_max=100
     )
     changed_param_sensor_angle, param_max_time_scale_factor = imgui.slider_float(
-        "MAX_TIME_SCALE_FACTOR", param_max_time_scale_factor, v_min=0, v_max=10
+        "MAX_TIME_SCALE_FACTOR", param_max_time_scale_factor, v_min=0.5, v_max=10
     )
     changed_param_sensor_offset, param_sensor_offset = imgui.slider_int(
         "SENSOR_OFFSET", param_sensor_offset, v_min=-300, v_max=300
@@ -287,50 +345,19 @@ def draw_gui():
     imgui.render()
     renderer.render(imgui.get_draw_data())
 
-
-# running the simulation loop
-# example keyboard input
-@window.event
-def on_key_press(symbol, modifiers):
-    # global restart_sim
-    print('A key was pressed')
-    pyglet.app.exit() 
-    restart_sim() # doesn't work
-
-@window.event
-def on_key_press(symbol, modifiers):
-    if symbol == key.A:
-        print('The "A" key was pressed.')
-    elif symbol == key.LEFT:
-        print('The left arrow key was pressed.')
-    elif symbol == key.ENTER:
-        print('The enter key was pressed.')
-
-# reset the simulation state (but not the parameters)
-def restart_sim():
-    pyglet.app.exit()
-
-    # simulation_timer runs the main loop of the simulation
-    # dt = delta time; amount of time elapsed between updates (1/frame_rate)
-    # everything else in the simulation (Environment and Agents) updates when simulation_timer.tick() is called
-    simulation_timer = SimulationTimer()
-    def update_loop(dt):
-        simulation_timer.tick()
-
-    agents = np.empty(param_agents_number, Agent)
-    for i in range(param_agents_number):
-        agents[i] = Agent(simulation_timer)
-    
-    env = Environment(simulation_timer)
-
-    
-    pyglet.clock.schedule_interval(update_loop, 1/(FRAME_RATE*param_max_time_scale_factor))  # update at FRAME_RATE Hz (FRAME_RATE updates/second)
-    pyglet.app.run()
-    # print("wow")
-
-# used for rendering gui later
-imgui.create_context()
-renderer = create_renderer(window)
-
-# start the program
+# start the program!!
 restart_sim()
+
+
+
+
+### EXTRAS
+# this code makes the background of the window a random color
+# pyglet.gl.glClearColor(random.random(), random.random(), random.random(), 1.0)
+
+# unused multimedia functions
+# image = pyglet.resource.image('kitten.jpg')
+# music = pyglet.resource.media('music.mp3')
+# music.play()
+# sound = pyglet.resource.media('shot.wav', streaming=False)
+# sound.play()
