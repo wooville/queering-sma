@@ -40,7 +40,7 @@ An interactive explanation of the algorithm is available [here](https://denizbic
 5. Activate the virtual environment inside of the terminal using the command
 	```
 	Windows:		.venv\Scripts\activate.bat
-	macOS\linux:	source .venv\Scripts\activate
+	macOS\linux:	source .venv\bin\activate
 	```
 6. Install this project's dependencies into the virtual environment using the command
    ```
@@ -51,7 +51,7 @@ An interactive explanation of the algorithm is available [here](https://denizbic
 1. Activate the existing virtual environment using the command
    ```
    Windows:			.venv\Scripts\activate.bat
-   macOS\linux:		source .venv\Scripts\activate
+   macOS\linux:		source .venv\bin\activate
    ```
 2. Run the program using the command
    ```
