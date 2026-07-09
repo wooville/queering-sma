@@ -10,11 +10,11 @@ from pyglet.math import Mat4, Vec3
 from imgui_bundle import imgui
 from imgui_bundle.python_backends.pyglet_backend import create_renderer
 
-
 # setup for different platforms
 current_os = platform.system()
 
 if current_os == "Windows":
+    # pyglet.options.dpi_scaling = "real"
     pass
 elif current_os == "Darwin":
     pyglet.options.dpi_scaling = "scaled"
@@ -144,12 +144,16 @@ class Agent(Observer):
         # decide on a direction based on sensor data
         # update direction towards max sensed value by amount=param_turn_angle
         if (center > left and center > right):
+            # keep going forward
             pass
         elif (center < left and center > right):
+            # randomly turn right, or else go forward
             if (np.random.rand() < 0.5): self.dir += param_turn_angle
         elif (left > right):
+            # turn left
             self.dir += -param_turn_angle
         elif (right > left):
+            # turn right
             self.dir += param_turn_angle
 
         # check if we want to apply drift (random angle modifier)
