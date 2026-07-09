@@ -1,20 +1,31 @@
+import os
+import platform
 import math
 import random
 import numpy as np
 import pyglet
 from pyglet.window import key
-from pyglet.gl import *
+from pyglet.math import Mat4, Vec3
+# from pyglet.gl import *
 from imgui_bundle import imgui
 from imgui_bundle.python_backends.pyglet_backend import create_renderer
 
-# disable texture filters to avoid blurring pixels (doesn't seem to be necessary)
-glEnable(GL_TEXTURE_2D)
-glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST)
+
+# setup for different platforms
+current_os = platform.system()
+
+if current_os == "Windows":
+    pass
+elif current_os == "Darwin":
+    pyglet.options.dpi_scaling = "scaled"
+elif current_os == "Linux":
+    os.environ.setdefault("PYOPENGL_PLATFORM", "x11")
+    pyglet.options.dpi_scaling = "real"
 
 # constants
 # window dimensions
-WIDTH = int(512*1.25)
-HEIGHT = int(512*1.25)
+WIDTH = int(800)
+HEIGHT = int(800)
 
 FRAME_RATE = 60.0           # how many times/second does the program update (ie simulation speed); tihs is a maximum value limited by performance
 AGENT_SCALE_FACTOR = 1.0    # scale of drawn agent sprites (does not affect logic)
@@ -22,18 +33,20 @@ AGENT_SCALE_FACTOR = 1.0    # scale of drawn agent sprites (does not affect logi
 # parameters
 # all agents use these parameters
 # these parameters are adjustable in the GUI
-param_time_step_factor = 1.0        # NOTE must restart to take effect
-param_agents_number = 1000          # NOTE must restart to take effect
-param_sensor_offset = 10            #
-param_sensor_angle = math.pi / 4    #
-param_turn_angle = math.pi / 9      #
-param_step_size = 1                 #
-param_max_time_scale_factor = 1     #
-param_trail_decay = 0.95            #
-param_wander_chance = 0.003         #
-param_wander_weight = 124           #
-param_drift_chance = 0.05           #
-param_drift_weight = math.pi / 12   #
+## MAIN PARAMETERS
+param_max_time_scale_factor = 1     # multiply the MAX speed of the simulation (limited by performance) NOTE must restart to take effect
+param_agents_number = 1000          # number of agents in the simulation (will affect performance) NOTE must restart to take effect
+param_step_size = 1                 # distance that agent will move each update step (will affect performance)
+param_sensor_offset = 10            # distance between agents and their sensors
+param_sensor_angle = math.pi / 4    # angle between agent sensors
+param_turn_angle = math.pi / 9      # angle that agent will turn at after sensing
+param_trail_decay = 0.95            # factor that agent trails will decay at each update step
+## OTHER PARAMETERS (less critical)
+param_wander_chance = 0.003         # chance for agents to "wander" (blind sensing)
+param_wander_weight = 124           # max sensed value when wandering (random)
+param_drift_chance = 0.05           # chance for agents to "drift" (random angle modifier)
+param_drift_weight = math.pi / 12   # max angle modifier when drifting (random)
+
 # other gui/state tracking vars
 show_trail = True
 show_agents = True
@@ -45,7 +58,7 @@ show_fps = False
 # np.random.seed(0)
 
 # create the window containing the program
-window = pyglet.window.Window(WIDTH, HEIGHT)
+window = pyglet.window.Window(WIDTH, HEIGHT, resizable=True)
 fps_display = pyglet.window.FPSDisplay(window=window)
 
 # for efficient rendering of many sprites at once, we assign them to one of these batches
@@ -172,14 +185,14 @@ class Agent(Observer):
         dy = math.sin(self.dir)
 
         # this loops takes param_step_size steps in unit increments
+        # this way, we can take big steps and deposit trail in between our start and end location
         for i in range(param_step_size):
-            self.deposit() # deposit trail at each step
-
-            # update location by one pixel
+            # update location by one unit
             self.x += dx
             self.y += dy
-            self.x = (self.x + window.width) % window.width
-            self.y = (self.y + window.height) % window.height
+            self.x = (self.x + WIDTH) % WIDTH
+            self.y = (self.y + HEIGHT) % HEIGHT
+            self.deposit() # deposit trail at each step            
 
         # update agent sprite with new location
         self.sprite.x = self.x
@@ -193,9 +206,10 @@ class Agent(Observer):
         # if (pride_mode):
         trail_map[int(self.y)][int(self.x)][:] = self.color
         # else: trail_map[int(self.y)][int(self.x)][:] = param_trail_map_color
+        
 
 # object class that updates the environment that agents interact with
-# we will create a single Environment, and all it does is update the value of the trail_map
+# we will create a single Environment, and all it does is update (decay) the value of the trail_map
 class Environment(Observer):
     def __init__(self, subject):
         global trail_map # use the global trail_map we made earlier
@@ -222,7 +236,9 @@ class Environment(Observer):
 agents = np.empty(param_agents_number, Agent)
 env = None
 
-# make a simulation timer and the update function (tick)
+# simulation_timer runs the main loop of the simulation
+# dt = delta time; amount of time elapsed between updates (1/frame_rate)
+# everything else in the simulation (Environment and Agents) updates when simulation_timer.tick() is called
 simulation_timer = SimulationTimer()
 def update_loop(dt):
     simulation_timer.tick()
@@ -233,14 +249,11 @@ def restart_sim():
     pyglet.app.exit()
     pyglet.clock.unschedule(update_loop)
     
+    # reset the trail_map
     trail_map = np.zeros(
     [HEIGHT, WIDTH, RGB_CHANNELS], dtype=np.uint8 # note that height/width are swapped, don't worry too much about it...
     )
 
-    # simulation_timer runs the main loop of the simulation
-    # dt = delta time; amount of time elapsed between updates (1/frame_rate)
-    # everything else in the simulation (Environment and Agents) updates when simulation_timer.tick() is called
-    
     # create our agents according to parameters
     agents = np.empty(param_agents_number, Agent)
     for i in range(param_agents_number):
@@ -258,6 +271,11 @@ def restart_sim():
 # create the objects we use for rendering the gui
 imgui.create_context()
 renderer = create_renderer(window)
+
+# scale up the gui (text + widget padding/sizes) for readability on HiDPI displays
+UI_SCALE = 1.75
+imgui.get_style().font_scale_main = UI_SCALE
+imgui.get_style().scale_all_sizes(UI_SCALE)
 
 # the window executes this function when we press any key
 @window.event
@@ -278,9 +296,19 @@ def on_draw():
     # erase the previous frame drawing
     window.clear()
 
+    # the simulation canvas is a fixed WIDTH x HEIGHT area; scale it to fill
+    # the window (preserving aspect ratio) and center whatever's left over
+    scale = min(window.width / WIDTH, window.height / HEIGHT)
+    offset_x = (window.width - WIDTH * scale) / 2
+    offset_y = (window.height - HEIGHT * scale) / 2
+    window.view = Mat4.from_translation(Vec3(offset_x, offset_y, 0)) @ Mat4.from_scale(Vec3(scale, scale, 1))
+
     # draw the trail map sprite before (underneath) the agent sprites
     if show_trail: batch_trail.draw()
     if show_agents: batch_agents.draw()
+
+    # reset the view so the fps display and gui aren't shifted by the offset
+    window.view = Mat4()
     if show_fps: fps_display.draw()
 
     # draw the gui on top of everything
@@ -291,7 +319,7 @@ def on_draw():
 # the drawn interface elements are interactable and can manipulate the parameters of the simulation
 def draw_gui():
     # global show_demo_window, counter, user_text
-    global param_agents_number, param_step_size, param_max_time_scale_factor, param_sensor_offset, param_sensor_angle, param_turn_angle, param_time_step_factor, param_trail_decay, param_wander_chance, param_wander_weight, param_drift_chance, param_drift_weight, show_agents, show_trail
+    global param_agents_number, param_step_size, param_max_time_scale_factor, param_sensor_offset, param_sensor_angle, param_turn_angle, param_trail_decay, param_wander_chance, param_wander_weight, param_drift_chance, param_drift_weight, show_agents, show_trail
 
     # begin gui definition
     # everything between imgui.begin() and imgui.end() defines the gui like an ordered list of elements
@@ -311,7 +339,7 @@ def draw_gui():
         "STEP_SIZE", param_step_size, v_min=0, v_max=100
     )
     changed_param_sensor_angle, param_max_time_scale_factor = imgui.slider_float(
-        "MAX_TIME_SCALE_FACTOR", param_max_time_scale_factor, v_min=0.5, v_max=10
+        "MAX_TIME_SCALE_FACTOR", param_max_time_scale_factor, v_min=0.25, v_max=10
     )
     changed_param_sensor_offset, param_sensor_offset = imgui.slider_int(
         "SENSOR_OFFSET", param_sensor_offset, v_min=-300, v_max=300
