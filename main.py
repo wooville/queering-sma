@@ -1,26 +1,29 @@
 import os
 import platform
+
+current_os = platform.system()
+if (current_os == "Linux"): os.environ.setdefault("PYOPENGL_PLATFORM", "x11")
+
 import math
 import random
 import numpy as np
 import pyglet
-from pyglet.window import key
-from pyglet.math import Mat4, Vec3
-# from pyglet.gl import *
-from imgui_bundle import imgui
-from imgui_bundle.python_backends.pyglet_backend import create_renderer
-
-# setup for different platforms
-current_os = platform.system()
-
 if current_os == "Windows":
-    # pyglet.options.dpi_scaling = "real"
-    pass
+    pyglet.options.dpi_scaling = "real"
 elif current_os == "Darwin":
     pyglet.options.dpi_scaling = "scaled"
 elif current_os == "Linux":
-    os.environ.setdefault("PYOPENGL_PLATFORM", "x11")
     pyglet.options.dpi_scaling = "real"
+
+from pyglet.window import key
+from pyglet.gl import *
+from pyglet.math import Mat4, Vec3
+from imgui_bundle import imgui
+from imgui_bundle.python_backends.pyglet_backend import create_renderer
+
+# disable texture filters to avoid blurring pixels (doesn't seem to be necessary)
+# glEnable(GL_TEXTURE_2D)
+# glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST)
 
 # constants
 # window dimensions
@@ -33,20 +36,18 @@ AGENT_SCALE_FACTOR = 1.0    # scale of drawn agent sprites (does not affect logi
 # parameters
 # all agents use these parameters
 # these parameters are adjustable in the GUI
-## MAIN PARAMETERS
-param_max_time_scale_factor = 1     # multiply the MAX speed of the simulation (limited by performance) NOTE must restart to take effect
-param_agents_number = 1000          # number of agents in the simulation (will affect performance) NOTE must restart to take effect
-param_step_size = 1                 # distance that agent will move each update step (will affect performance)
-param_sensor_offset = 10            # distance between agents and their sensors
-param_sensor_angle = math.pi / 4    # angle between agent sensors
-param_turn_angle = math.pi / 9      # angle that agent will turn at after sensing
-param_trail_decay = 0.95            # factor that agent trails will decay at each update step
-## OTHER PARAMETERS (less critical)
-param_wander_chance = 0.003         # chance for agents to "wander" (blind sensing)
-param_wander_weight = 124           # max sensed value when wandering (random)
-param_drift_chance = 0.05           # chance for agents to "drift" (random angle modifier)
-param_drift_weight = math.pi / 12   # max angle modifier when drifting (random)
-
+param_time_step_factor = 1.0        # NOTE must restart to take effect
+param_agents_number = 1000          # NOTE must restart to take effect
+param_sensor_offset = 10            #
+param_sensor_angle = math.pi / 4    #
+param_turn_angle = math.pi / 9      #
+param_step_size = 1                 #
+param_max_time_scale_factor = 1     #
+param_trail_decay = 0.95            #
+param_wander_chance = 0.003         #
+param_wander_weight = 124           #
+param_drift_chance = 0.05           #
+param_drift_weight = math.pi / 12   #
 # other gui/state tracking vars
 show_trail = True
 show_agents = True
@@ -112,8 +113,8 @@ class Agent(Observer):
         # Here, we initialize this individual agent's important variables (current position and direction)
         # These self.variable values are accessible in our other functions after this point
         # this code spawns agents randomly near the center of the window
-        self.x = random.randint(window.width // 2 - window.width // 16, window.width // 2 + window.width // 16)
-        self.y = random.randint(window.height // 2 - window.height // 16, window.height // 2 + window.height // 16)
+        self.x = random.randint(WIDTH // 2 - WIDTH // 16, WIDTH // 2 + WIDTH // 16)
+        self.y = random.randint(HEIGHT // 2 - HEIGHT // 16, HEIGHT // 2 + HEIGHT // 16)
         self.dir = (random.random()*math.pi)    # current direction in radians
 
         # assign a random color to this agent
@@ -144,16 +145,12 @@ class Agent(Observer):
         # decide on a direction based on sensor data
         # update direction towards max sensed value by amount=param_turn_angle
         if (center > left and center > right):
-            # keep going forward
             pass
         elif (center < left and center > right):
-            # randomly turn right, or else go forward
             if (np.random.rand() < 0.5): self.dir += param_turn_angle
         elif (left > right):
-            # turn left
             self.dir += -param_turn_angle
         elif (right > left):
-            # turn right
             self.dir += param_turn_angle
 
         # check if we want to apply drift (random angle modifier)
@@ -176,8 +173,8 @@ class Agent(Observer):
         y = math.floor(self.y + param_sensor_offset * math.sin(angle))
 
         # wrap x and y coordinates to contain them inside of the window (we don't want to go out of bounds)
-        x = (x + window.width) % window.width
-        y = (y + window.height) % window.height
+        x = (x + WIDTH) % WIDTH
+        y = (y + HEIGHT) % HEIGHT
         
         # # return the trail at this location (specifically the opacity; we ignore the color)
         return trail_map[y, x, :][3] # [3] is the alpha channel (highest trail intensity)
@@ -189,14 +186,13 @@ class Agent(Observer):
         dy = math.sin(self.dir)
 
         # this loops takes param_step_size steps in unit increments
-        # this way, we can take big steps and deposit trail in between our start and end location
         for i in range(param_step_size):
-            # update location by one unit
+            # update location by one pixel
             self.x += dx
             self.y += dy
             self.x = (self.x + WIDTH) % WIDTH
             self.y = (self.y + HEIGHT) % HEIGHT
-            self.deposit() # deposit trail at each step            
+            self.deposit() # deposit trail at each step
 
         # update agent sprite with new location
         self.sprite.x = self.x
@@ -210,10 +206,9 @@ class Agent(Observer):
         # if (pride_mode):
         trail_map[int(self.y)][int(self.x)][:] = self.color
         # else: trail_map[int(self.y)][int(self.x)][:] = param_trail_map_color
-        
 
 # object class that updates the environment that agents interact with
-# we will create a single Environment, and all it does is update (decay) the value of the trail_map
+# we will create a single Environment, and all it does is update the value of the trail_map
 class Environment(Observer):
     def __init__(self, subject):
         global trail_map # use the global trail_map we made earlier
@@ -240,9 +235,7 @@ class Environment(Observer):
 agents = np.empty(param_agents_number, Agent)
 env = None
 
-# simulation_timer runs the main loop of the simulation
-# dt = delta time; amount of time elapsed between updates (1/frame_rate)
-# everything else in the simulation (Environment and Agents) updates when simulation_timer.tick() is called
+# make a simulation timer and the update function (tick)
 simulation_timer = SimulationTimer()
 def update_loop(dt):
     simulation_timer.tick()
@@ -253,11 +246,14 @@ def restart_sim():
     pyglet.app.exit()
     pyglet.clock.unschedule(update_loop)
     
-    # reset the trail_map
     trail_map = np.zeros(
     [HEIGHT, WIDTH, RGB_CHANNELS], dtype=np.uint8 # note that height/width are swapped, don't worry too much about it...
     )
 
+    # simulation_timer runs the main loop of the simulation
+    # dt = delta time; amount of time elapsed between updates (1/frame_rate)
+    # everything else in the simulation (Environment and Agents) updates when simulation_timer.tick() is called
+    
     # create our agents according to parameters
     agents = np.empty(param_agents_number, Agent)
     for i in range(param_agents_number):
@@ -277,7 +273,7 @@ imgui.create_context()
 renderer = create_renderer(window)
 
 # scale up the gui (text + widget padding/sizes) for readability on HiDPI displays
-UI_SCALE = 1.75
+UI_SCALE = 1.25
 imgui.get_style().font_scale_main = UI_SCALE
 imgui.get_style().scale_all_sizes(UI_SCALE)
 
@@ -323,7 +319,7 @@ def on_draw():
 # the drawn interface elements are interactable and can manipulate the parameters of the simulation
 def draw_gui():
     # global show_demo_window, counter, user_text
-    global param_agents_number, param_step_size, param_max_time_scale_factor, param_sensor_offset, param_sensor_angle, param_turn_angle, param_trail_decay, param_wander_chance, param_wander_weight, param_drift_chance, param_drift_weight, show_agents, show_trail
+    global param_agents_number, param_step_size, param_max_time_scale_factor, param_sensor_offset, param_sensor_angle, param_turn_angle, param_time_step_factor, param_trail_decay, param_wander_chance, param_wander_weight, param_drift_chance, param_drift_weight, show_agents, show_trail
 
     # begin gui definition
     # everything between imgui.begin() and imgui.end() defines the gui like an ordered list of elements
@@ -343,7 +339,7 @@ def draw_gui():
         "STEP_SIZE", param_step_size, v_min=0, v_max=100
     )
     changed_param_sensor_angle, param_max_time_scale_factor = imgui.slider_float(
-        "MAX_TIME_SCALE_FACTOR", param_max_time_scale_factor, v_min=0.25, v_max=10
+        "MAX_TIME_SCALE_FACTOR", param_max_time_scale_factor, v_min=0.5, v_max=10
     )
     changed_param_sensor_offset, param_sensor_offset = imgui.slider_int(
         "SENSOR_OFFSET", param_sensor_offset, v_min=-300, v_max=300
