@@ -1,0 +1,15 @@
+{
+    "sim_params": {
+        "agents_number": 1000,
+        "max_time_scale_factor": 1.0,
+        "step_size": 1,
+        "sensor_offset": 10,
+        "sensor_angle": 0.25,
+        "turn_angle": 0.11100000143051147,
+        "trail_decay": 0.949999988079071,
+        "wander_chance": 0.003000000026077032,
+        "wander_weight": 0.5,
+        "drift_chance": 0.05000000074505806,
+        "drift_weight": 0.07999999821186066
+    }
+}

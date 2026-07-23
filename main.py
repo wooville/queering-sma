@@ -1,5 +1,6 @@
 import os
 import platform
+import json
 
 current_os = platform.system()
 if (current_os == "Linux"): os.environ.setdefault("PYOPENGL_PLATFORM", "x11")
@@ -7,6 +8,7 @@ if (current_os == "Linux"): os.environ.setdefault("PYOPENGL_PLATFORM", "x11")
 import math
 import random
 import numpy as np
+
 import pyglet
 if current_os == "Windows":
     pyglet.options.dpi_scaling = "real"
@@ -21,10 +23,6 @@ from pyglet.math import Mat4, Vec3
 from imgui_bundle import imgui
 from imgui_bundle.python_backends.pyglet_backend import create_renderer
 
-# disable texture filters to avoid blurring pixels (doesn't seem to be necessary)
-# glEnable(GL_TEXTURE_2D)
-# glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST)
-
 # constants
 # window dimensions
 WIDTH = int(800)
@@ -33,26 +31,26 @@ HEIGHT = int(800)
 FRAME_RATE = 60.0           # how many times/second does the program update (ie simulation speed); tihs is a maximum value limited by performance
 AGENT_SCALE_FACTOR = 1.0    # scale of drawn agent sprites (does not affect logic)
 
-# parameters
-# all agents use these parameters
-# these parameters are adjustable in the GUI
-param_time_step_factor = 1.0        # NOTE must restart to take effect
-param_agents_number = 1000          # NOTE must restart to take effect
-param_sensor_offset = 10            #
-param_sensor_angle = math.pi / 4    #
-param_turn_angle = math.pi / 9      #
-param_step_size = 1                 #
-param_max_time_scale_factor = 1     #
-param_trail_decay = 0.95            #
-param_wander_chance = 0.003         #
-param_wander_weight = 124           #
-param_drift_chance = 0.05           #
-param_drift_weight = math.pi / 12   #
+# parameters start with default values from PARAMS_FILE_READ
+# if you press the Export Parameters button, 
+PARAMS_FILE_READ = "params_override.json"
+PARAMS_FILE_WRITE = "params_override.json"
+
+# object (dict) to store parameters into
+# parameters are read 
+# parameters are adjustable in the GUI
+params = {}
+
 # other gui/state tracking vars
 show_trail = True
 show_agents = True
 show_fps = False
 # counter = 0
+
+# READ FROM FILE
+with open(PARAMS_FILE_READ, "r") as f:
+    params = json.load(f)
+    sim_params = params["sim_params"]
 
 # for reproducibility (haven't tested much)
 # random.seed(0)
@@ -125,9 +123,9 @@ class Agent(Observer):
         self.sprite = pyglet.shapes.Rectangle(x=self.x, y=self.y, width=AGENT_SCALE_FACTOR, height=AGENT_SCALE_FACTOR, color=self.color, batch=batch_agents)
 
         # we could consider agents with individual parameters, instead of using the same global parameters for all agents (tangential)
-        # self.sensor_offset = param_sensor_offset
-        # self.sensor_angle = param_sensor_angle
-        # self.turn_angle = param_turn_angle
+        # self.sensor_offset = sim_params["sensor_offset"]
+        # self.sensor_angle = sim_params["sensor_angle"]
+        # self.turn_angle = sim_params["turn_angle"]
         # ...
 
     # called every frame: update direction and position based on global parameter values
@@ -138,39 +136,39 @@ class Agent(Observer):
     # decide on a new direction based on sensor data
     def update_direction(self):
         # acquire sensor data at 3 points (offset from the agent, fanned from left to right) 
-        left = self.sense(-param_sensor_angle)
+        left = self.sense(-sim_params["sensor_angle"]*math.pi)
         center = self.sense(0)
-        right = self.sense(+param_sensor_angle)
+        right = self.sense(+sim_params["sensor_angle"]*math.pi)
         
         # decide on a direction based on sensor data
-        # update direction towards max sensed value by amount=param_turn_angle
+        # update direction towards max sensed value by amount=sim_params["turn_angle"]
         if (center > left and center > right):
             pass
         elif (center < left and center > right):
-            if (np.random.rand() < 0.5): self.dir += param_turn_angle
+            if (np.random.rand() < 0.5): self.dir += sim_params["turn_angle"]*math.pi
         elif (left > right):
-            self.dir += -param_turn_angle
+            self.dir += -sim_params["turn_angle"]*math.pi
         elif (right > left):
-            self.dir += param_turn_angle
+            self.dir += sim_params["turn_angle"]*math.pi
 
         # check if we want to apply drift (random angle modifier)
-        if (np.random.rand() < param_drift_chance):
-            self.dir += random.uniform(-param_drift_weight, param_drift_weight)
+        if (np.random.rand() < sim_params["drift_chance"]):
+            self.dir += random.uniform(-sim_params["drift_weight"]*math.pi, sim_params["drift_weight"]*math.pi)
 
     # return the value of the trail_map at a point relative to ourselves (the agent)
     def sense(self, dir_offset):
         # check if wandering (return random value)
         # maybe more like "blind" at this sensor point
-        if (np.random.rand() < param_wander_chance):
-            return random.randint(-param_wander_weight, param_wander_weight)
+        if (np.random.rand() < sim_params["wander_chance"]):
+            return random.randint(-int(sim_params["wander_weight"]*255), int(sim_params["wander_weight"])*255)
         
         # dir_offset is the angle relative to our current direction
         angle = self.dir + dir_offset
 
-        # get x and y coordinates of the point a certain angle and distance (param_sensor_offset) away from us 
+        # get x and y coordinates of the point a certain angle and distance (sim_params["sensor_offset"]) away from us 
         # x and y components of the point relative to ourselves
-        x = math.floor(self.x + param_sensor_offset * math.cos(angle))
-        y = math.floor(self.y + param_sensor_offset * math.sin(angle))
+        x = math.floor(self.x + sim_params["sensor_offset"] * math.cos(angle))
+        y = math.floor(self.y + sim_params["sensor_offset"] * math.sin(angle))
 
         # wrap x and y coordinates to contain them inside of the window (we don't want to go out of bounds)
         x = (x + WIDTH) % WIDTH
@@ -185,8 +183,8 @@ class Agent(Observer):
         dx = math.cos(self.dir)
         dy = math.sin(self.dir)
 
-        # this loops takes param_step_size steps in unit increments
-        for i in range(param_step_size):
+        # this loops takes sim_params["step_size"] steps in unit increments
+        for i in range(sim_params["step_size"]):
             # update location by one pixel
             self.x += dx
             self.y += dy
@@ -227,12 +225,12 @@ class Environment(Observer):
         global trail_map # use the global trail_map we made earlier
 
         # decay trails, making sure that we're storing valid numbers into trail_map (our RGBA format)
-        trail_map = np.uint8(trail_map*param_trail_decay)
+        trail_map = np.uint8(trail_map*sim_params["trail_decay"])
 
         self.image_data.set_data(IMG_FORMAT, pitch, trail_map.tobytes()) # turn the colors into bytes and store it as an image
         self.sprite.image = self.image_data # this is the sprite drawn by the window every frame
 
-agents = np.empty(param_agents_number, Agent)
+agents = np.empty(sim_params["agents_number"], Agent)
 env = None
 
 # make a simulation timer and the update function (tick)
@@ -255,15 +253,15 @@ def restart_sim():
     # everything else in the simulation (Environment and Agents) updates when simulation_timer.tick() is called
     
     # create our agents according to parameters
-    agents = np.empty(param_agents_number, Agent)
-    for i in range(param_agents_number):
+    agents = np.empty(sim_params["agents_number"], Agent)
+    for i in range(sim_params["agents_number"]):
         agents[i] = Agent(simulation_timer) # each agent observes the same simulation timer
     
     # create our environment and give it the simulation timer to observe
     env = Environment(simulation_timer)
 
     # set the update_loop (tick the simulation timer) we want to run and the interval (framerate)
-    pyglet.clock.schedule_interval(update_loop, 1/(FRAME_RATE*param_max_time_scale_factor))  # update at FRAME_RATE Hz (FRAME_RATE updates/second)
+    pyglet.clock.schedule_interval(update_loop, 1/(FRAME_RATE*sim_params["max_time_scale_factor"]))  # update at FRAME_RATE Hz (FRAME_RATE updates/second)
     pyglet.app.run()
     # print("wow")
 
@@ -287,9 +285,9 @@ def on_key_press(symbol, modifiers):
         global show_fps
         print('FPS display toggled')
         show_fps = not show_fps
+        
     # elif symbol == key.ENTER:
     #     print('The enter key was pressed.')
-
 # the window uses this function to draw each frame
 @window.event
 def on_draw():
@@ -318,8 +316,9 @@ def on_draw():
 # define interface elements (text, checkboxes, sliders) to be drawn every frame
 # the drawn interface elements are interactable and can manipulate the parameters of the simulation
 def draw_gui():
-    # global show_demo_window, counter, user_text
-    global param_agents_number, param_step_size, param_max_time_scale_factor, param_sensor_offset, param_sensor_angle, param_turn_angle, param_time_step_factor, param_trail_decay, param_wander_chance, param_wander_weight, param_drift_chance, param_drift_weight, show_agents, show_trail
+    global sim_params
+    global show_agents, show_trail
+    # global sim_params["agents_number"], sim_params["step_size"], sim_params["max_time_scale_factor"], sim_params["sensor_offset"], sim_params["sensor_angle"], sim_params["turn_angle"], sim_params["trail_decay"], sim_params["wander_chance"], sim_params["wander_weight"], sim_params["drift_chance"], sim_params["drift_weight"], 
 
     # begin gui definition
     # everything between imgui.begin() and imgui.end() defines the gui like an ordered list of elements
@@ -332,39 +331,43 @@ def draw_gui():
     _, show_agents = imgui.checkbox("Show Agents", show_agents)
 
     # sliders to adjust simulation parameters
-    changed_param_agents_number, param_agents_number = imgui.slider_int(
-        "AGENTS_NUMBER", param_agents_number, v_min=0, v_max=5000
+    changed_agents_number, sim_params["agents_number"] = imgui.slider_int(
+        "AGENTS_NUMBER", sim_params["agents_number"], v_min=0, v_max=10000
     )
-    changed_param_step_size, param_step_size = imgui.slider_int(
-        "STEP_SIZE", param_step_size, v_min=0, v_max=100
+    changed_step_size, sim_params["step_size"] = imgui.slider_int(
+        "STEP_SIZE", sim_params["step_size"], v_min=0, v_max=100
     )
-    changed_param_sensor_angle, param_max_time_scale_factor = imgui.slider_float(
-        "MAX_TIME_SCALE_FACTOR", param_max_time_scale_factor, v_min=0.5, v_max=10
+    changed_sensor_angle, sim_params["max_time_scale_factor"] = imgui.slider_float(
+        "MAX_TIME_SCALE_FACTOR", sim_params["max_time_scale_factor"], v_min=0.5, v_max=10
     )
-    changed_param_sensor_offset, param_sensor_offset = imgui.slider_int(
-        "SENSOR_OFFSET", param_sensor_offset, v_min=-300, v_max=300
+    changed_sensor_offset, sim_params["sensor_offset"] = imgui.slider_int(
+        "SENSOR_OFFSET", sim_params["sensor_offset"], v_min=-300, v_max=300
     )
-    changed_param_sensor_angle, param_sensor_angle = imgui.slider_float(
-        "SENSOR_ANGLE", param_sensor_angle, v_min=-math.pi, v_max=math.pi
+    changed_sensor_angle, sim_params["sensor_angle"] = imgui.slider_float(
+        "SENSOR_ANGLE", sim_params["sensor_angle"], v_min=-math.pi, v_max=math.pi
     )
-    changed_param_turn_angle, param_turn_angle = imgui.slider_float(
-        "TURN_ANGLE", param_turn_angle, v_min=-math.pi, v_max=math.pi
+    changed_turn_angle, sim_params["turn_angle"] = imgui.slider_float(
+        "TURN_ANGLE", sim_params["turn_angle"], v_min=-math.pi, v_max=math.pi
     )
-    changed_param_trail_decay, param_trail_decay = imgui.slider_float(
-        "TRAIL_DECAY", param_trail_decay, v_min=0, v_max=1
+    changed_trail_decay, sim_params["trail_decay"] = imgui.slider_float(
+        "TRAIL_DECAY", sim_params["trail_decay"], v_min=-1, v_max=1
     )
-    changed_param_wander_chance, param_wander_chance = imgui.slider_float(
-        "WANDER_CHANCE", param_wander_chance, v_min=0, v_max=1
+    changed_wander_chance, sim_params["wander_chance"] = imgui.slider_float(
+        "WANDER_CHANCE", sim_params["wander_chance"], v_min=0, v_max=1
     )
-    changed_param_wander_weight, param_wander_weight = imgui.slider_int(
-        "WANDER_WEIGHT", param_wander_weight, v_min=0, v_max=255
+    changed_wander_weight, sim_params["wander_weight"] = imgui.slider_float(
+        "WANDER_WEIGHT", sim_params["wander_weight"], v_min=0, v_max=1
     )
-    changed_param_drift_chance, param_drift_chance = imgui.slider_float(
-        "DRIFT_CHANCE", param_drift_chance, v_min=0, v_max=1
+    changed_drift_chance, sim_params["drift_chance"] = imgui.slider_float(
+        "DRIFT_CHANCE", sim_params["drift_chance"], v_min=0, v_max=1
     )
-    changed_param_drift_weight, param_drift_weight = imgui.slider_float(
-        "DRIFT_WEIGHT", param_drift_weight, v_min=-2*math.pi, v_max=2*math.pi
+    changed_drift_weight, sim_params["drift_weight"] = imgui.slider_float(
+        "DRIFT_WEIGHT", sim_params["drift_weight"], v_min=-1, v_max=1
     )
+
+    if imgui.button("SAVE PARAMS"):
+        write_json(params, PARAMS_FILE_WRITE)
+        print("Parameters saved into ", PARAMS_FILE_WRITE)
 
     # end gui definition
     imgui.end()
@@ -376,10 +379,12 @@ def draw_gui():
 # start the program!!
 restart_sim()
 
-
-
-
 ### EXTRAS
+# helper function to write json file
+def write_json(data, path):
+    with open(path, "w") as f:
+        json.dump(data, f, indent=4)
+
 # this code makes the background of the window a random color
 # pyglet.gl.glClearColor(random.random(), random.random(), random.random(), 1.0)
 
