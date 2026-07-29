@@ -96,8 +96,6 @@ class QSMAWindow(pyglet.window.Window):
     # define interface elements (text, checkboxes, sliders) to be drawn every frame
     # the drawn interface elements are interactable and can manipulate the parameters of the simulation
     def draw_gui(self):
-        # global sim_params["agents_number"], sim_params["step_size"], sim_params["max_time_scale_factor"], sim_params["sensor_offset"], sim_params["sensor_angle"], sim_params["turn_angle"], sim_params["trail_decay"], sim_params["wander_chance"], sim_params["wander_weight"], sim_params["drift_chance"], sim_params["drift_weight"], 
-
         # begin gui definition
         # everything between imgui.begin() and imgui.end() defines the gui like an ordered list of elements
         imgui.new_frame()

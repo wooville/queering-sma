@@ -31,8 +31,7 @@ class QSMACore():
         self.window = QSMAWindow(sim=self.sim, width=800, height=600, title="QSMA SIM", resizable=True)
         # set a framerate for the window
         pyglet.clock.schedule_interval(self.update, 1/self.FRAME_RATE)
-        
-
+    
     def update(self, dt):
         self.sim.update(dt)
 
