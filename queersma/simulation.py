@@ -4,35 +4,20 @@ from . import math
 from . import numpy as np
 from . import signal
 from . import pyglet
-
-# Abstract observer class
-class Observer:
-    def __init__(self, subject):
-        subject.push_handlers(self)
-
-# # The subject
-# class SimulationTimer(pyglet.event.EventDispatcher):
-#     def tick(self):
-#         self.dispatch_event('on_update') # tell everyone to update
+from .helpers import *
 
 class QSMASimulation():
-    def __init__(self, params, signals, batches):
+    def __init__(self, params):
         self.params = params
-        # print(self.params)
-        self.batch_trail = data['batches'][0]
-        self.batch_agents = data['batches'][1]
-
-        self.signal_sim_params_changed = signals['sim_params_changed']
-        self.signal_sim_params_changed.connect(self.update_params)
-        # SimulationTimer.register_event_type('on_update')
-        
         self.restart()
     
     def update(self, dt):
-        self.environment_map = np.uint8(self.environment_map*self.params["trail_decay"]*dt)
+        # decay_dt = dt/self.params["trail_decay"]
+        # print(decay_dt)
+        self.environment_map[:] = np.uint8(self.environment_map*self.params["trail_decay"])
         for agent in self.agents:
             agent.update(dt)
-        # print(self.environment_map.tobytes())
+        # print(self.environment_map)
         # return {'environment_map': self.environment_map}
 
     def update_params(self, sender, **kw):
@@ -63,7 +48,7 @@ class QSMASimulation():
     # Here, we define the behaviour of each individual agent
     # When we run the program, we will create many of these agents that act based on our code here
     # Agents move and turn  based on information retrieved by sensing the self.env_map around them 
-    class Agent(Observer):
+    class Agent():
         # every time we create an Agent, we first initialize it based on this function
         def __init__(self, params, environment_map):
             # this code spawns agents exactly in the middle of the window
@@ -83,15 +68,6 @@ class QSMASimulation():
             # assign a random color to this agent
             # RGBA format: Red Green Blue Alpha -> alpha = opacity
             self.color = (random.randint(0,255), random.randint(0,255), random.randint(0,255), 255)
-
-            # assign a sprite to this agent (so we can draw it) and give it our (x,y) position, color
-            # self.sprite = pyglet.shapes.Rectangle(x=self.x, y=self.y, width=AGENT_SCALE_FACTOR, height=AGENT_SCALE_FACTOR, color=self.color, batch=params["batch_agents"])
-
-            # we could consider agents with individual parameters, instead of using the same global parameters for all agents (tangential)
-            # self.sensor_offset = sim_params["sensor_offset"]
-            # self.sensor_angle = sim_params["sensor_angle"]
-            # self.turn_angle = sim_params["turn_angle"]
-            # ...
 
         # called every frame: update direction and position based on global parameter values
         def update(self, dt):
@@ -140,61 +116,32 @@ class QSMASimulation():
             height = self.environment_map.shape[1]
             x = (x + width) % width
             y = (y + height) % height
-            
-            # # return the trail at this location (specifically the opacity; we ignore the color)
-            return self.environment_map[y, x, :][3] # [3] is the alpha channel (highest trail intensity)
+
+            return self.environment_map[y, x, :][3]
         
         # move self one step and update agent sprite
         def update_position(self, dt):
             # calculate x and y components of current direction
-            dx = math.cos(self.direction)
-            dy = math.sin(self.direction)
+            dx = math.cos(self.direction)*dt*self.params["step_size"]
+            dy = math.sin(self.direction)*dt*self.params["step_size"]
             
+            # for determining boundaries
             width = self.environment_map.shape[0]
             height = self.environment_map.shape[1]
 
-            # this loops takes sim_params["step_size"] steps in unit increments
-            for i in range(self.params["step_size"]):
-                # update location by one pixel
-                self.x += dx
-                self.y += dy
-                self.x = (self.x + width) % width
-                self.y = (self.y + height) % height
-                self.deposit() # deposit trail at each step
-
-            # print(self.x)
-
-            # update agent sprite with new location
-            # self.sprite.x = self.x
-            # self.sprite.y = self.y
-        
-        # deposit trail at current location (represented with a color value for visualization)
-        def deposit(self):
-            # this code makes all trails green
-            # self.environment_map[int(self.y)][int(self.x)][:]  = [0,255,0,255]
+            # deposit at all of the integer points between start and end location
+            deposit_pts = get_points_integer([int(self.x), int(self.y)], [int(self.x + dx), int(self.y + dy)])
+            for p in deposit_pts:
+                self.deposit((p[0] + width) % width, (p[1] + height) % height)
             
-            # if (pride_mode):
-            self.environment_map[int(self.y)][int(self.x)][:] = self.color
-            # print(self.environment_map)
-            # else: self.environment_map[int(self.y)][int(self.x)][:] = param_trail_map_color
+            # update position
+            self.x += dx
+            self.y += dy
 
-    # object class that updates the environment that agents interact with
-    # we will create a single Environment, and all it does is update the value of the self.environment_map
-    # class Environment():
-    #     # def __init__(self):
-    #         # image_data draws to the screen
-    #         # self.image_data = pyglet.image.ImageData(
-    #         #     self.width, self.height, IMG_FORMAT, self.environment_map.tobytes(), pitch
-    #         # )
-            
-    #         # sprite is the visualization of the trail map
-    #         # self.sprite = pyglet.sprite.Sprite(self.image_data, batch=batch_trail)
+            # wrap position
+            self.x = (self.x + width) % width
+            self.y = (self.y + height) % height
         
-    #     # called every frame by SimulationTimer: decay trail and update associated pixels 
-    #     def update(self):
-
-    #         # decay trails, making sure that we're storing valid numbers into self.environment_map (our RGBA format)
-    #         self.environment_map = np.uint8(self.environment_map*self.params["trail_decay"])
-
-            # self.image_data.set_data(self.IMG_FORMAT, self.pitch, self.environment_map.tobytes()) # turn the colors into bytes and store it as an image
-            # self.sprite.image = self.image_data # this is the sprite drawn by the window every frame
+        # deposit trail at point (x, y) (represented with a color value for visualization)
+        def deposit(self, x, y):
+            self.environment_map[int(y)][int(x)][:] = self.color

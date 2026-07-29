@@ -11,19 +11,18 @@ from pyglet.math import Mat4, Vec3
 
 from typing import override
 
+AGENT_SCALE_FACTOR = 1.0    # scale of drawn agent sprites (does not affect logic)
+
 class QSMAWindow(pyglet.window.Window):
-    def __init__(self, data, width, height, title, resizable):
+    def __init__(self, sim, width, height, title, resizable):
         super().__init__(width, height, title, resizable)
-        # pyglet.gl.glClearColor(random.random(), random.random(), random.random(), 1.0)
-        self.sim = data['sim']
-        self.signal_sim_params_changed = data['signals']['sim_params_changed']
         
-        self.batch_trail = data['batches'][0]
-        self.batch_agents = data['batches'][1]
+        self.sim = sim
+        
         self.width = self.sim.params["width"]
         self.height = self.sim.params["height"]
-        # self.batch_trail = pyglet.graphics.Batch()
-        # self.batch_agents = pyglet.graphics.Batch()
+        self.batch_trail = pyglet.graphics.Batch()
+        self.batch_agents = pyglet.graphics.Batch()
         self.RGB_CHANNELS = 4
         self.MAX_COLOR = 255
         self.IMG_FORMAT = 'RGBA'
@@ -35,18 +34,13 @@ class QSMAWindow(pyglet.window.Window):
         )
         
         # sprite is the visualization of the trail map
-        self.sprite = pyglet.sprite.Sprite(self.image_data, batch=self.batch_trail)
-        self.sprite1 = pyglet.shapes.Rectangle(x=self.sim.agents[0].x, y=self.sim.agents[0].y, width=4, height=4, color=self.sim.agents[0].color, batch=self.batch_agents)
+        self.trail_sprite = pyglet.sprite.Sprite(self.image_data, batch=self.batch_trail)
         
-        # self.environment_map = np.zeros(
-        #     [self.height, self.width, self.RGB_CHANNELS], dtype=np.uint8 # note that height/width are swapped, don't worry too much about it...
-        #     )
-        
-        # self.agent_sprites = np.empty(self.sim.params["agents_number"])
-        # for i in range(self.sim.agents.size):
-        #     a = self.sim.agents[i]
-        #     print(a.x)
-        #     self.agent_sprites[i]=pyglet.shapes.Rectangle(x=a.x, y=a.y, width=1, height=1, color=a.color, batch=self.batch_agents)
+        self.agent_sprites = np.empty(self.sim.params["agents_number"], pyglet.shapes.Rectangle)
+        for i in range(self.sim.agents.size):
+            a = self.sim.agents[i]
+            # print(a.x)
+            self.agent_sprites[i]=pyglet.shapes.Rectangle(x=a.x, y=a.y, width=AGENT_SCALE_FACTOR, height=AGENT_SCALE_FACTOR, color=a.color, batch=self.batch_agents)
 
         self.show_trail = True
         self.show_agents = True
@@ -56,8 +50,7 @@ class QSMAWindow(pyglet.window.Window):
         self.fps_display = pyglet.window.FPSDisplay(window=self)
         imgui.create_context()
         self.renderer = create_renderer(self)
-        
-
+    
     # the window executes this function when we press any key
     @override
     def on_key_press(self, symbol, modifiers):
@@ -67,9 +60,8 @@ class QSMAWindow(pyglet.window.Window):
         if symbol == key.F:
             print('FPS display toggled')
             self.show_fps = not self.show_fps
-            
-        # elif symbol == key.ENTER:
-        #     print('The enter key was pressed.')
+        elif symbol == key.ENTER:
+            print('The enter key was pressed.')
     
     @override
     def on_draw(self):
@@ -78,28 +70,26 @@ class QSMAWindow(pyglet.window.Window):
         
         # the simulation canvas is a sim.width x sim.height area; scale it to fill
         # the window (preserving aspect ratio) and center whatever's left over
-        # scale = min(self.width / self.sim.width, self.height / self.sim.height)
-        # offset_x = (self.width - self.sim.width * scale) / 2
-        # offset_y = (self.height - self.sim.height * scale) / 2
-        # self.view = Mat4.from_translation(Vec3(offset_x, offset_y, 0)) @ Mat4.from_scale(Vec3(scale, scale, 1))
+        scale = min(self.width / self.sim.width, self.height / self.sim.height)
+        offset_x = (self.width - self.sim.width * scale) / 2
+        offset_y = (self.height - self.sim.height * scale) / 2
+        self.view = Mat4.from_translation(Vec3(offset_x, offset_y, 0)) @ Mat4.from_scale(Vec3(scale, scale, 1))
+
+        self.image_data.set_data(self.IMG_FORMAT, self.pitch, self.sim.environment_map.tobytes()) # turn the colors into bytes and store it as an image
+        self.trail_sprite.image = self.image_data
+
+        for i in range(len(self.agent_sprites)):
+            self.agent_sprites[i].x = self.sim.agents[i].x
+            self.agent_sprites[i].y = self.sim.agents[i].y
 
         # draw the trail map sprite before (underneath) the agent sprites
-        # if self.show_trail: self.batch_trail.draw()
-        # if self.show_agents: self.batch_agents.draw()
-        self.image_data.set_data(self.IMG_FORMAT, self.pitch, self.sim.environment_map.tobytes()) # turn the colors into bytes and store it as an image
-        # print(self.sim.environment_map.tobytes())
-        self.sprite.image = self.image_data
-
-        self.sprite1.x = self.sim.agents[0].x
-        self.sprite1.y = self.sim.agents[0].y
-
-        self.batch_trail.draw()
-        self.batch_agents.draw()
+        if self.show_trail: self.batch_trail.draw()
+        if self.show_agents: self.batch_agents.draw()
 
         # reset the view so the fps display and gui aren't shifted by the offset
-        # self.view = Mat4()
-        if self.show_fps: self.fps_display.draw()
+        self.view = Mat4()
 
+        if self.show_fps: self.fps_display.draw()
         self.draw_gui()
 
     # draw a simple "immediate mode" gui using imgui-bundle library
@@ -115,58 +105,51 @@ class QSMAWindow(pyglet.window.Window):
         # for param in self.core_params
 
         # checkboxes to toggle drawing of trail/agents
-        # _, show_trail = imgui.checkbox("Show Trail", show_trail)
+        # _, show_trail = imgui.checkbox("Show Trail", self.show_trail)
         # imgui.same_line()
-        # _, show_agents = imgui.checkbox("Show Agents", show_agents)
+        # _, show_agents = imgui.checkbox("Show Agents", self.show_agents)
 
         # sliders to adjust simulation parameters
-        changed, self.sim.params["agents_number"] = imgui.slider_int(
+        _, self.sim.params["agents_number"] = imgui.slider_int(
             "AGENTS_NUMBER", self.sim.params["agents_number"], v_min=0, v_max=10000
         )
-        changed, self.sim.params["step_size"] = imgui.slider_int(
-            "STEP_SIZE", self.sim.params["step_size"], v_min=0, v_max=100
+        _, self.sim.params["step_size"] = imgui.slider_int(
+            "STEP_SIZE", self.sim.params["step_size"], v_min=0, v_max=1000
         )
-        changed, self.sim.params["max_time_scale_factor"] = imgui.slider_float(
+        _, self.sim.params["max_time_scale_factor"] = imgui.slider_float(
             "MAX_TIME_SCALE_FACTOR", self.sim.params["max_time_scale_factor"], v_min=0.5, v_max=10
         )
-        changed, self.sim.params["sensor_offset"] = imgui.slider_int(
+        _, self.sim.params["sensor_offset"] = imgui.slider_int(
             "SENSOR_OFFSET", self.sim.params["sensor_offset"], v_min=-300, v_max=300
         )
-        changed, self.sim.params["sensor_angle"] = imgui.slider_float(
+        _, self.sim.params["sensor_angle"] = imgui.slider_float(
             "SENSOR_ANGLE", self.sim.params["sensor_angle"], v_min=-math.pi, v_max=math.pi
         )
-        changed, self.sim.params["turn_angle"] = imgui.slider_float(
+        _, self.sim.params["turn_angle"] = imgui.slider_float(
             "TURN_ANGLE", self.sim.params["turn_angle"], v_min=-math.pi, v_max=math.pi
         )
-        changed, self.sim.params["trail_decay"] = imgui.slider_float(
+        _, self.sim.params["trail_decay"] = imgui.slider_float(
             "TRAIL_DECAY", self.sim.params["trail_decay"], v_min=-1, v_max=1
         )
-        changed, self.sim.params["wander_chance"] = imgui.slider_float(
+        _, self.sim.params["wander_chance"] = imgui.slider_float(
             "WANDER_CHANCE", self.sim.params["wander_chance"], v_min=0, v_max=1
         )
-        changed, self.sim.params["wander_weight"] = imgui.slider_float(
+        _, self.sim.params["wander_weight"] = imgui.slider_float(
             "WANDER_WEIGHT", self.sim.params["wander_weight"], v_min=0, v_max=1
         )
-        changed, self.sim.params["drift_chance"] = imgui.slider_float(
+        _, self.sim.params["drift_chance"] = imgui.slider_float(
             "DRIFT_CHANCE", self.sim.params["drift_chance"], v_min=0, v_max=1
         )
-        changed, self.sim.params["drift_weight"] = imgui.slider_float(
+        _, self.sim.params["drift_weight"] = imgui.slider_float(
             "DRIFT_WEIGHT", self.sim.params["drift_weight"], v_min=-1, v_max=1
         )
 
-        # if anything changed, send signal to whoever is subscribed to 'sim_params_changed' signal
-        if (changed):
-            # print("test")
-            self.signal_sim_params_changed.send(self)
-
-        # if imgui.button("SAVE PARAMS"):
-        #     write_json(self.core_params, self.PARAMS_FILE_WRITE)
-        #     print("Parameters saved into ", self.PARAMS_FILE_WRITE)
+        if imgui.button("SAVE PARAMS"):
+            write_json(self.core_params, self.PARAMS_FILE_WRITE)
+            print("Parameters saved into ", self.PARAMS_FILE_WRITE)
 
         # end gui definition
         imgui.end()
-
-        
 
         # draw the gui for this frame based on above definition
         imgui.render()
