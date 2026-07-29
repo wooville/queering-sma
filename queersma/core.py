@@ -1,5 +1,6 @@
 from . import multiprocessing
 from . import math
+from . import sounddevice as sd
 from . import numpy as np
 from . import signal
 from . import pyglet
@@ -39,7 +40,7 @@ class QSMACore():
         self.sim_params = self.core_params["sim_params"]
 
         # instantiate QSMASimulation logic
-        self.sim = QSMASimulation(params=self.sim_params, signals=self.signals)
+        self.sim = QSMASimulation(params=self.sim_params, signals=self.signals, batches=self.batches)
         # self.sim.restart()
 
         # if (self.run_QSMAWindow):

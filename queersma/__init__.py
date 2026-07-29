@@ -12,6 +12,7 @@ import multiprocessing
 import math
 import random
 import numpy
+import sounddevice
 
 import blinker
 from blinker import signal
