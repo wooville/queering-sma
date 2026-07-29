@@ -16,9 +16,11 @@ class Observer:
 #         self.dispatch_event('on_update') # tell everyone to update
 
 class QSMASimulation():
-    def __init__(self, params, signals):
+    def __init__(self, params, signals, batches):
         self.params = params
         # print(self.params)
+        self.batch_trail = data['batches'][0]
+        self.batch_agents = data['batches'][1]
 
         self.signal_sim_params_changed = signals['sim_params_changed']
         self.signal_sim_params_changed.connect(self.update_params)
@@ -147,7 +149,7 @@ class QSMASimulation():
             # calculate x and y components of current direction
             dx = math.cos(self.direction)
             dy = math.sin(self.direction)
-            # print(dx, " ", dx*dt)
+            
             width = self.environment_map.shape[0]
             height = self.environment_map.shape[1]
 
@@ -159,6 +161,8 @@ class QSMASimulation():
                 self.x = (self.x + width) % width
                 self.y = (self.y + height) % height
                 self.deposit() # deposit trail at each step
+
+            # print(self.x)
 
             # update agent sprite with new location
             # self.sprite.x = self.x

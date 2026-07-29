@@ -18,12 +18,12 @@ class QSMAWindow(pyglet.window.Window):
         self.sim = data['sim']
         self.signal_sim_params_changed = data['signals']['sim_params_changed']
         
-        # self.batch_trail = data['batches'][0]
-        # self.batch_agents = data['batches'][1]
+        self.batch_trail = data['batches'][0]
+        self.batch_agents = data['batches'][1]
         self.width = self.sim.params["width"]
         self.height = self.sim.params["height"]
-        self.batch_trail = pyglet.graphics.Batch()
-        self.batch_agents = pyglet.graphics.Batch()
+        # self.batch_trail = pyglet.graphics.Batch()
+        # self.batch_agents = pyglet.graphics.Batch()
         self.RGB_CHANNELS = 4
         self.MAX_COLOR = 255
         self.IMG_FORMAT = 'RGBA'
@@ -36,7 +36,7 @@ class QSMAWindow(pyglet.window.Window):
         
         # sprite is the visualization of the trail map
         self.sprite = pyglet.sprite.Sprite(self.image_data, batch=self.batch_trail)
-        self.sprite = pyglet.shapes.Rectangle(x=self.sim.agents[0].x, y=self.sim.agents[0].y, width=4, height=4, color=self.sim.agents[0].color, batch=self.batch_agents)
+        self.sprite1 = pyglet.shapes.Rectangle(x=self.sim.agents[0].x, y=self.sim.agents[0].y, width=4, height=4, color=self.sim.agents[0].color, batch=self.batch_agents)
         
         # self.environment_map = np.zeros(
         #     [self.height, self.width, self.RGB_CHANNELS], dtype=np.uint8 # note that height/width are swapped, don't worry too much about it...
@@ -89,6 +89,9 @@ class QSMAWindow(pyglet.window.Window):
         self.image_data.set_data(self.IMG_FORMAT, self.pitch, self.sim.environment_map.tobytes()) # turn the colors into bytes and store it as an image
         # print(self.sim.environment_map.tobytes())
         self.sprite.image = self.image_data
+
+        self.sprite1.x = self.sim.agents[0].x
+        self.sprite1.y = self.sim.agents[0].y
 
         self.batch_trail.draw()
         self.batch_agents.draw()
