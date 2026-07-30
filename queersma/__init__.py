@@ -14,8 +14,6 @@ import queue
 import sys
 import sounddevice
 import threading
-import psutil
-import wmi
 
 import math
 import random

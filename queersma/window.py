@@ -9,8 +9,7 @@ from . import queue
 from . import sys
 from . import sounddevice as sd
 from . import threading
-from . import psutil
-from . import wmi
+
 from .helpers import write_json
 from pyglet.window import key
 from pyglet.gl import *
