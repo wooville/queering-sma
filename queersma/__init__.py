@@ -27,7 +27,7 @@ import pyglet
 if current_os == "Windows":
     pyglet.options.dpi_scaling = "real"
 elif current_os == "Darwin":
-    pyglet.options.dpi_scaling = "scaled"
+    pyglet.options.dpi_scaling = "stretch"
 elif current_os == "Linux":
     pyglet.options.dpi_scaling = "real"
 

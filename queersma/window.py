@@ -102,7 +102,7 @@ class QSMAWindow(pyglet.window.Window):
 
         # Use the context manager to automatically open and close the stream safely
         with stream:
-            print("🎙️ Async audio stream started. Press Ctrl+C to stop.")
+            print("Async audio stream started. Press Ctrl+C to stop.")
             while True:
                 try:
                     # Retrieve a data block from the thread-safe queue
