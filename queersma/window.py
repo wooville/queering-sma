@@ -129,8 +129,8 @@ class QSMAWindow(pyglet.window.Window):
 
     def update_audio_effect(self, data):
         volume_norm = np.linalg.norm(data)
-        self.sim.params["step_size"] = int(10*volume_norm)
-        self.sim.params["wander_chance"] = volume_norm
+        self.sim.params["step_size"] = int(100*volume_norm)+10
+        self.sim.params["drift_chance"] = volume_norm
         # ... whatever you want to do with audio here!
         # pyglet.gl.glClearColor(volume_norm, volume_norm, volume_norm, volume_norm)
     
