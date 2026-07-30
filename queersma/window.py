@@ -192,6 +192,10 @@ class QSMAWindow(pyglet.window.Window):
         # imgui.same_line()
         # _, show_agents = imgui.checkbox("Show Agents", self.show_agents)
 
+        if imgui.button("RESET SIM"):
+            print('Restarting simulation!')
+            self.sim.restart()
+
         # sliders to adjust simulation parameters
         _, self.sim.params["agents_number"] = imgui.slider_int(
             "AGENTS_NUMBER", self.sim.params["agents_number"], v_min=0, v_max=10000
