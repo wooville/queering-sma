@@ -138,9 +138,9 @@ class QSMAWindow(pyglet.window.Window):
     # the window executes this function when we press any key
     @override
     def on_key_press(self, symbol, modifiers):
-        # if symbol == key.R:
-        #     print('Restarting simulation!')
-        #     restart_sim()
+        if symbol == key.R:
+            print('Restarting simulation!')
+            self.sim.restart()
         if symbol == key.F:
             print('FPS display toggled')
             self.show_fps = not self.show_fps
