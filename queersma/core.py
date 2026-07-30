@@ -23,11 +23,11 @@ class QSMACore():
 
     def __init__(self):
         # see params file for example structure
-        self.core_params = read_json(self.PARAMS_FILE_READ)
-        self.sim_params = self.core_params["sim_params"]
+        # self.core_params = read_json(self.PARAMS_FILE_READ)
+        # self.sim_params = self.core_params["sim_params"]
 
         # instantiate QSMASimulation logic
-        self.sim = QSMASimulation(params=self.sim_params)
+        self.sim = QSMASimulation()
         self.window = QSMAWindow(sim=self.sim, width=800, height=600, title="QSMA SIM", resizable=True)
         # set a framerate for the window
         pyglet.clock.schedule_interval(self.update, 1/self.FRAME_RATE)

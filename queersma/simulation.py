@@ -6,8 +6,24 @@ from . import signal
 from . import pyglet
 from .helpers import *
 
+sim_params_default = {
+    "width": 800,
+    "height": 800,
+    "agents_number": 1000,
+    "max_time_scale_factor": 1,
+    "step_size": 10,
+    "sensor_offset": 10,
+    "sensor_angle": 0.25,
+    "turn_angle": 0.111,
+    "trail_decay": 0.95,
+    "wander_chance": 0.003,
+    "wander_weight": 0.5,
+    "drift_chance": 0.05,
+    "drift_weight": 0.08
+}
+
 class QSMASimulation():
-    def __init__(self, params):
+    def __init__(self, params = sim_params_default):
         self.params = params
         self.restart()
     
