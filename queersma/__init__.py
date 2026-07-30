@@ -9,6 +9,14 @@ if (current_os == "Linux"): os.environ.setdefault("PYOPENGL_PLATFORM", "x11")
 
 import multiprocessing
 
+import asyncio
+import queue
+import sys
+import sounddevice
+import threading
+import psutil
+import wmi
+
 import math
 import random
 import numpy

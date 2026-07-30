@@ -2,9 +2,9 @@
     "sim_params": {
         "width": 800,
         "height": 800,
-        "agents_number": 10,
+        "agents_number": 1000,
         "max_time_scale_factor": 1,
-        "step_size": 1,
+        "step_size": 10,
         "sensor_offset": 10,
         "sensor_angle": 0.25,
         "turn_angle": 0.111,

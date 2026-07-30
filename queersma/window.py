@@ -4,11 +4,17 @@ from . import numpy as np
 from . import math
 from . import random
 from . import imgui, create_renderer
+from . import asyncio
+from . import queue
+from . import sys
+from . import sounddevice as sd
+from . import threading
+from . import psutil
+from . import wmi
 from .helpers import write_json
 from pyglet.window import key
 from pyglet.gl import *
 from pyglet.math import Mat4, Vec3
-
 from typing import override
 
 AGENT_SCALE_FACTOR = 1.0    # scale of drawn agent sprites (does not affect logic)
@@ -50,6 +56,84 @@ class QSMAWindow(pyglet.window.Window):
         self.fps_display = pyglet.window.FPSDisplay(window=self)
         imgui.create_context()
         self.renderer = create_renderer(self)
+
+        # scale up the gui (text + widget padding/sizes) for readability on HiDPI displays
+        self.UI_SCALE = 1.25
+        imgui.get_style().font_scale_main = self.UI_SCALE
+        imgui.get_style().scale_all_sizes(self.UI_SCALE)
+        
+        self.setup_input_streams()
+
+    def setup_input_streams(self):
+        self.async_loop = asyncio.new_event_loop()
+        threading.Thread(target=self.start_async_loop, args=(self.async_loop,), daemon=True).start()
+    
+    def start_async_loop(self, loop):
+        asyncio.set_event_loop(loop)
+        loop.run_forever()
+
+    async def audio_stream_processor(self, sample_rate=44100, block_size=2048, channels=1):
+        """Asynchronously captures and processes audio blocks without blocking the event loop."""
+        loop = asyncio.get_running_loop()
+        
+        # Thread-safe FIFO queue to hold audio blocks moving from the OS thread to the async loop
+        audio_queue = queue.Queue()
+
+        # this is the callback function we will pass to the audio stream
+        def sync_audio_callback(indata, outdata, frames, time, status):
+            """Low-level callback executed by PortAudio in a separate OS thread."""
+            if status:
+                print(f"Status flag raised: {status}", file=sys.stderr)
+            
+            # Safely hand over a copy of the input buffer to our thread-safe queue
+            # For a full duplex loopback, we also write the incoming data to the output buffer
+            outdata[:] = indata
+            
+            pyglet.clock.schedule_once(lambda dt: self.update_audio_effect(indata), 0)
+            # Push the data block into the queue and wake up the async event loop safely
+            loop.call_soon_threadsafe(audio_queue.put_nowait, indata.copy())
+
+        # Initialize the sounddevice Stream
+        stream = sd.Stream(
+            samplerate=sample_rate,
+            blocksize=block_size,
+            channels=channels,
+            callback=sync_audio_callback
+        )
+
+        # Use the context manager to automatically open and close the stream safely
+        with stream:
+            print("🎙️ Async audio stream started. Press Ctrl+C to stop.")
+            while True:
+                try:
+                    # Retrieve a data block from the thread-safe queue
+                    # We use a small timeout so the loop yields control frequently
+                    data_block = await loop.run_in_executor(
+                        None, audio_queue.get, True, 0.1
+                    )
+                except queue.Empty:
+                    # Yield control to the async loop if no new audio block is ready yet
+                    await asyncio.sleep(0.001)
+                    continue
+
+                # --- YOUR ASYNC PROCESSING GOES HERE ---
+                # You can send 'data_block' to an async WebSocket, run real-time DSP, 
+                # or pass it to an AI speech-to-text API without freezing your app.
+                volume_norm = float(data_block.max())
+                print(f"Captured audio block | Max volume: {volume_norm:.4f}", end="\r")
+
+    async def input_stream_mic(self):
+        try:
+            await self.audio_stream_processor()
+        except asyncio.CancelledError:
+            print("\nStream cancelled.")
+
+    def update_audio_effect(self, data):
+        volume_norm = np.linalg.norm(data)
+        self.sim.params["step_size"] = int(10*volume_norm)
+        self.sim.params["wander_chance"] = volume_norm
+        # ... whatever you want to do with audio here!
+        # pyglet.gl.glClearColor(volume_norm, volume_norm, volume_norm, volume_norm)
     
     # the window executes this function when we press any key
     @override
@@ -61,7 +145,8 @@ class QSMAWindow(pyglet.window.Window):
             print('FPS display toggled')
             self.show_fps = not self.show_fps
         elif symbol == key.ENTER:
-            print('The enter key was pressed.')
+            print('Microphone input stream running')
+            asyncio.run_coroutine_threadsafe(self.input_stream_mic(), self.async_loop)
     
     @override
     def on_draw(self):
