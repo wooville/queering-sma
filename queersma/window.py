@@ -18,11 +18,15 @@ from typing import override
 
 AGENT_SCALE_FACTOR = 1.0    # scale of drawn agent sprites (does not affect logic)
 
+
 class QSMAWindow(pyglet.window.Window):
-    def __init__(self, sim, width, height, title, resizable):
+    def __init__(self, sim, signals, width, height, title, resizable):
         super().__init__(width, height, title, resizable)
         
         self.sim = sim
+        self.signals = signals
+
+        # self.signals['agents_number_changed'].connect(self.update_agent_sprites)
         
         self.width = self.sim.params["width"]
         self.height = self.sim.params["height"]
@@ -44,7 +48,6 @@ class QSMAWindow(pyglet.window.Window):
         self.agent_sprites = np.empty(self.sim.params["agents_number"], pyglet.shapes.Rectangle)
         for i in range(self.sim.agents.size):
             a = self.sim.agents[i]
-            # print(a.x)
             self.agent_sprites[i]=pyglet.shapes.Rectangle(x=a.x, y=a.y, width=AGENT_SCALE_FACTOR, height=AGENT_SCALE_FACTOR, color=a.color, batch=self.batch_agents)
 
         self.show_trail = True
@@ -129,11 +132,12 @@ class QSMAWindow(pyglet.window.Window):
 
     def update_audio_effect(self, data):
         volume_norm = np.linalg.norm(data)
-        self.sim.params["step_size"] = int(100*volume_norm)+10
-        self.sim.params["drift_chance"] = self.sim.params["step_size"]+volume_norm
-        # self.sim.params["agents_number"] = int(100*volume_norm)
+        # self.sim.params["step_size"] = int(100*volume_norm)+10
+        self.sim.params["drift_chance"] = volume_norm
+        self.sim.params["agents_number"] = int(5000*volume_norm+500)
+        self.update_agents()
 
-        self.sim.environment_map[:] = np.uint8(self.sim.environment_map*(volume_norm+1))
+        # self.sim.environment_map[:] = np.uint8(self.sim.environment_map*(volume_norm+1))
         # ... whatever you want to do with audio here!
         # pyglet.gl.glClearColor(volume_norm, volume_norm, volume_norm, volume_norm)
     
@@ -165,9 +169,12 @@ class QSMAWindow(pyglet.window.Window):
         self.image_data.set_data(self.IMG_FORMAT, self.pitch, self.sim.environment_map.tobytes()) # turn the colors into bytes and store it as an image
         self.trail_sprite.image = self.image_data
 
-        for i in range(len(self.agent_sprites)):
-            self.agent_sprites[i].x = self.sim.agents[i].x
-            self.agent_sprites[i].y = self.sim.agents[i].y
+        # self.update_agents()
+        for i in range(len(self.sim.agents)):
+            if (self.agent_sprites[i] is not None):
+                # print(len(self.sim.agents))
+                self.agent_sprites[i].x = self.sim.agents[i].x
+                self.agent_sprites[i].y = self.sim.agents[i].y
 
         # draw the trail map sprite before (underneath) the agent sprites
         if self.show_trail: self.batch_trail.draw()
@@ -199,7 +206,7 @@ class QSMAWindow(pyglet.window.Window):
             self.sim.restart()
 
         # sliders to adjust simulation parameters
-        _, self.sim.params["agents_number"] = imgui.slider_int(
+        agents_number_changed, self.sim.params["agents_number"] = imgui.slider_int(
             "AGENTS_NUMBER", self.sim.params["agents_number"], v_min=0, v_max=10000
         )
         _, self.sim.params["step_size"] = imgui.slider_int(
@@ -237,6 +244,9 @@ class QSMAWindow(pyglet.window.Window):
             write_json(self.core_params, self.PARAMS_FILE_WRITE)
             print("Parameters saved into ", self.PARAMS_FILE_WRITE)
 
+        if agents_number_changed:
+            pyglet.clock.schedule_once(lambda dt: self.update_agents(), 0)
+
         # end gui definition
         imgui.end()
 
@@ -244,3 +254,34 @@ class QSMAWindow(pyglet.window.Window):
         imgui.render()
         self.renderer.render(imgui.get_draw_data())
 
+    def update_agents(self):
+        diff = self.sim.agents.size-self.sim.params["agents_number"]
+
+        if (diff>0):
+            self.sim.agents = np.delete(self.sim.agents, np.s_[-abs(diff):-1])
+            # self.sim.add_agents(diff)
+            self.agent_sprites = np.delete(self.agent_sprites, np.s_[-abs(diff):-1])
+        elif (diff<0):
+            for i in range(abs(diff)):
+                new_agent = self.sim.Agent(self.sim.params, self.sim.environment_map)
+                self.sim.agents = np.append(self.sim.agents, new_agent)
+                self.agent_sprites = np.append(self.agent_sprites, pyglet.shapes.Rectangle(x=new_agent.x, y=new_agent.y, width=AGENT_SCALE_FACTOR, height=AGENT_SCALE_FACTOR, color=new_agent.color, batch=self.batch_agents))
+            # new_agent = self.sim.Agent(self.sim.params, self.sim.environment_map)
+            # self.sim.add_agents(diff)
+            
+
+    # def update_agent_sprites(self, sender, **kw):
+    #     self.agent_sprites = np.empty(int(self.sim.params["agents_number"]),pyglet.shapes.Rectangle)
+    #     diff = self.agent_sprites.size-self.sim.params["agents_number"]
+
+    #     # if (diff<0):
+    #     #     self.agent_sprites = np.delete(self.agents, np.s_[-abs(diff):-1])
+    #     # else
+    #     for i in range(abs(diff)):
+    #         if (diff<0):
+    #             self.agent_sprites = np.delete(self.agents,-i)
+    #         else:
+    #             a = self.sim.agents[i]
+    #             self.agent_sprites = np.append(self.agent_sprites, pyglet.shapes.Rectangle(x=a.x, y=a.y, width=AGENT_SCALE_FACTOR, height=AGENT_SCALE_FACTOR, color=a.color, batch=self.batch_agents))
+            # print(self.agent_sprites.size)
+            # self.agent_sprites = np.reshape(self.agents, self.params["agents_number"])

@@ -23,22 +23,19 @@ sim_params_default = {
 }
 
 class QSMASimulation():
-    def __init__(self, params = sim_params_default):
+    def __init__(self, signals, params = sim_params_default):
         self.params = params
+        self.signals = signals
+        # self.signals['agents_number_changed'].connect(self.update_agents_number)
         self.restart()
     
     def update(self, dt):
         # decay_dt = dt/self.params["trail_decay"]
         # print(decay_dt)
         self.environment_map[:] = np.uint8(self.environment_map*self.params["trail_decay"])
+        
         for agent in self.agents:
-            agent.update(dt)
-        # print(self.environment_map)
-        # return {'environment_map': self.environment_map}
-
-    def update_params(self, sender, **kw):
-        # self.params = kw
-        print(self.params)
+            if (agent is not None): agent.update(dt)
 
     # reset the simulation state (but not the parameters)
     def restart(self):

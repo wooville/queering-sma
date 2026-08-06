@@ -28,9 +28,16 @@ class QSMACore():
         self.core_params = read_json(self.PARAMS_FILE_READ)
         self.sim_params = self.core_params["sim_params"]
 
+        # create signals using Blinker library
+        # can use signals to communicate between QSMA modules
+        self.signals = {
+            'sim_params_changed': signal('sim_params_changed'),
+            'agents_number_changed': signal('agents_number_changed')
+            }
+
         # instantiate QSMASimulation logic
-        self.sim = QSMASimulation(params=self.sim_params)
-        self.win = QSMAWindow(sim=self.sim, width=800, height=600, title="QSMA SIM", resizable=True)
+        self.sim = QSMASimulation(params=self.sim_params, signals=self.signals)
+        self.win = QSMAWindow(sim=self.sim, signals=self.signals, width=800, height=600, title="QSMA SIM", resizable=True)
         # set a framerate for the window
         pyglet.clock.schedule_interval(self.update, 1/self.FRAME_RATE)
     
