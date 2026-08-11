@@ -18,7 +18,6 @@ from typing import override
 
 AGENT_SCALE_FACTOR = 1.0    # scale of drawn agent sprites (does not affect logic)
 
-
 class QSMAWindow(pyglet.window.Window):
     def __init__(self, sim, signals, width, height, title, resizable):
         super().__init__(width, height, title, resizable)
@@ -135,6 +134,7 @@ class QSMAWindow(pyglet.window.Window):
         # self.sim.params["step_size"] = int(100*volume_norm)+10
         self.sim.params["drift_chance"] = volume_norm
         self.sim.params["agents_number"] = int(5000*volume_norm+500)
+        # self.sim.agents
         self.update_agents()
 
         # self.sim.environment_map[:] = np.uint8(self.sim.environment_map*(volume_norm+1))
@@ -225,7 +225,7 @@ class QSMAWindow(pyglet.window.Window):
             "TURN_ANGLE", self.sim.params["turn_angle"], v_min=-math.pi, v_max=math.pi
         )
         _, self.sim.params["trail_decay"] = imgui.slider_float(
-            "TRAIL_DECAY", self.sim.params["trail_decay"], v_min=-1, v_max=1
+            "TRAIL_DECAY", self.sim.params["trail_decay"], v_min=-1, v_max=5
         )
         _, self.sim.params["wander_chance"] = imgui.slider_float(
             "WANDER_CHANCE", self.sim.params["wander_chance"], v_min=0, v_max=1

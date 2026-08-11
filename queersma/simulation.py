@@ -15,7 +15,7 @@ sim_params_default = {
     "sensor_offset": 10,
     "sensor_angle": 0.25,
     "turn_angle": 0.111,
-    "trail_decay": 0.95,
+    "trail_decay": 0.15,
     "wander_chance": 0.003,
     "wander_weight": 0.5,
     "drift_chance": 0.05,
@@ -30,9 +30,9 @@ class QSMASimulation():
         self.restart()
     
     def update(self, dt):
-        # decay_dt = dt/self.params["trail_decay"]
+        decay_dt = dt*self.params["trail_decay"]
         # print(decay_dt)
-        self.environment_map[:] = np.uint8(self.environment_map*self.params["trail_decay"])
+        self.environment_map[:] = np.uint8(self.environment_map*(1-decay_dt))
         
         for agent in self.agents:
             if (agent is not None): agent.update(dt)

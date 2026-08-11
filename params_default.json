@@ -8,7 +8,7 @@
         "sensor_offset": 10,
         "sensor_angle": 0.25,
         "turn_angle": 0.111,
-        "trail_decay": 0.95,
+        "trail_decay": 0.15,
         "wander_chance": 0.003,
         "wander_weight": 0.5,
         "drift_chance": 0.05,
