@@ -197,9 +197,9 @@ class QSMAWindow(pyglet.window.Window):
         # for param in self.core_params
 
         # checkboxes to toggle drawing of trail/agents
-        # _, show_trail = imgui.checkbox("Show Trail", self.show_trail)
-        # imgui.same_line()
-        # _, show_agents = imgui.checkbox("Show Agents", self.show_agents)
+        _, self.show_trail = imgui.checkbox("Show Trail", self.show_trail)
+        imgui.same_line()
+        _, self.show_agents = imgui.checkbox("Show Agents", self.show_agents)
 
         if imgui.button("RESET SIM"):
             print('Restarting simulation!')
