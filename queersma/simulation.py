@@ -32,9 +32,9 @@ class QSMASimulation():
     
     def update(self, dt):
         decay_dt = dt*self.params["trail_decay"]
-        # print(decay_dt)
+
         self.environment_map *= (1-decay_dt)
-        # self.update_trail()
+
         for agent in self.agents:
             if (agent is not None): agent.update(dt)
 
@@ -52,7 +52,7 @@ class QSMASimulation():
         self.environment_map = np.zeros(
             [self.width, self.height, self.depth], dtype=np.float32
         )
-        # print(self.environment_map[0,0,0])
+
         # self.environment_map[:,:,:] = 255
         # create our agents according to parameters
         self.agents = np.empty(self.params["agents_number"], self.Agent)
@@ -94,36 +94,28 @@ class QSMASimulation():
         
         # decide on a new direction based on sensor data
         def update_direction(self, dt):
-            # acquire sensor data at 3 points (offset from the agent, fanned from left to right) 
-            # left = self.sense(-self.params["sensor_angle"]*math.pi)
-            # center = self.sense(0)
-            # right = self.sense(+self.params["sensor_angle"]*math.pi)
-            # //Read trail
+            # Read trail
             leftAngle = self.angle[0] + self.params["sensor_angle"]
             rightAngle = self.angle[0] - self.params["sensor_angle"]
             topAngle = self.angle[1] + self.params["sensor_angle"]
             downAngle = self.angle[1] - self.params["sensor_angle"]
 
-            # //3D
+            # 3D
             frontPos =		self.position + np.asarray([math.cos(self.angle[1]) * math.cos(self.angle[0]), math.sin(self.angle[1]) * math.cos(self.angle[0]), math.sin(self.angle[0])]) * self.params["sensor_offset"]
             frontLeftPos =	self.position + np.asarray([math.cos(self.angle[0]) * math.cos(leftAngle), math.sin(self.angle[1]) * math.cos(leftAngle), math.sin(leftAngle)]) * self.params["sensor_offset"]
             frontRightPos =	self.position + np.asarray([math.cos(self.angle[1]) * math.cos(rightAngle), math.sin(self.angle[1]) * math.cos(rightAngle), math.sin(rightAngle)]) * self.params["sensor_offset"]
             frontTop =		self.position + np.asarray([math.cos(topAngle) * math.cos(self.angle[0]), math.sin(topAngle) * math.cos(self.angle[0]), math.sin(self.angle[0])]) * self.params["sensor_offset"]
             frontDown =		self.position + np.asarray([math.cos(downAngle) * math.cos(self.angle[0]), math.sin(downAngle) * math.cos(self.angle[0]), math.sin(self.angle[0])]) * self.params["sensor_offset"]
-            # //float3 frontTopLeftPos = pos + float3(cos(topAngle) * cos(leftAngle), sin(topAngle) * cos(leftAngle), sin(leftAngle)) * _SensorOffsetDistance;
-            # //float3 frontTopRightPos = pos + float3(cos(topAngle) * cos(rightAngle), sin(topAngle) * cos(rightAngle), sin(rightAngle)) * _SensorOffsetDistance;
-            # //float3 frontDownLeftPos = pos + float3(cos(downAngle) * cos(leftAngle), sin(downAngle) * cos(leftAngle), sin(leftAngle)) * _SensorOffsetDistance;
-            # //float3 frontDownRight = pos + float3(cos(downAngle) * cos(rightAngle), sin(downAngle) * cos(rightAngle), sin(rightAngle)) * _SensorOffsetDistance;
-
+            
             F = self.sense_pos(frontPos)
             FL = self.sense_pos(frontLeftPos)
             FR = self.sense_pos(frontRightPos)
             FT = self.sense_pos(frontTop)
             FD = self.sense_pos(frontDown)
 
-            # //Get new position
+            # Get new position
             if (np.random.rand() < self.params["drift_chance"]):
-                # //RandomRotation
+                # RandomRotation
                 self.angle[0] += self.params["turn_angle"]# * RandomSign(id.x + _AbsoluteTime)
                 self.angle[1] += self.params["turn_angle"]# * RandomSign(id.x + 254 + _AbsoluteTime)
             else:
@@ -157,7 +149,7 @@ class QSMASimulation():
             height = self.environment_map.shape[1]
             depth = self.environment_map.shape[2]
 
-            # //Bilinear filtering + wrap
+            # Bilinear filtering + wrap
             x = mod(int(pos[0]),width)
             y = mod(int(pos[1]),height)
             z = mod(int(pos[2]),depth)
@@ -185,8 +177,8 @@ class QSMASimulation():
         def update_position(self, dt):
             newPos = self.position + np.asarray([math.cos(self.angle[1]) * math.cos(self.angle[0]), math.sin(self.angle[1]) * math.cos(self.angle[0]), math.sin(self.angle[0])]) * self.params["step_size"]
 
-            # //Check boundaries
-            # //3D Cube
+            # Check boundaries
+            # 3D Cube
             width = self.environment_map.shape[0]
             height = self.environment_map.shape[1]
             depth = self.environment_map.shape[2]
@@ -197,21 +189,21 @@ class QSMASimulation():
             if (newPos[1] < 0): newPos[1] = height - 1
             if (newPos[2] < 0): newPos[2] = depth - 1
 
-            # //3D Sphere
+            # 3D Sphere
             # inside = inside_sphere(newPos, _Size * 0.5f, _Size.x * 0.5);
-            # //RandomRotation
+            # RandomRotation
             # self.angle[0] += (self.params["turn_angle"]# * RandomSign(id.x + _AbsoluteTime)) * (1 - inside);
             # self.angle[1] += (self.params["turn_angle"]# * RandomSign(id.x + 254 + _AbsoluteTime)) * (1 - inside);
 
             # newPos = newPos * inside + pos * (1 - inside);
 
-            # //Move particule
+            # Move particule
             self.velocity = newPos - self.position
             self.position = newPos
             # self.angle = angle
             # _ParticleBuffer[id.x].color = color;
 
-            # //Update trail
+            # Update trail
             self.deposit(newPos)#, min(SampleDensityFromPosition(newPos) + _ParticleBuffer[id.x].color, 1))
         
         # deposit trail at point (x, y) (represented with a color value for visualization)
