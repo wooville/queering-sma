@@ -8,6 +8,7 @@ from . import imgui, immapp
 from .helpers import *
 from .simulation import QSMASimulation
 from .window import QSMAWindow
+from .visual3d import QSMAVisual3D
 
 # QSMACore creates an instance of QSMASimulation (sim) and QSMAWindow (win)
 # when it creates QSMAWindow, it passes t
@@ -37,9 +38,11 @@ class QSMACore():
 
         # instantiate QSMASimulation logic
         self.sim = QSMASimulation(params=self.sim_params, signals=self.signals)
-        self.win = QSMAWindow(sim=self.sim, signals=self.signals, width=800, height=600, title="QSMA SIM", resizable=True)
+        self.vis = QSMAVisual3D(sim=self.sim)
+
+        # self.win = QSMAWindow(sim=self.sim, signals=self.signals, width=800, height=800, title="QSMA SIM", resizable=True)
         # set a framerate for the window
-        pyglet.clock.schedule_interval(self.update, 1/self.FRAME_RATE)
+        # pyglet.clock.schedule_interval(self.update, 1/self.FRAME_RATE)
     
     def update(self, dt):
         self.sim.update(dt)
@@ -47,5 +50,7 @@ class QSMACore():
     # called by main.py
     def run(self):
         # run pyglet window
-        pyglet.app.run()
+        # pyglet.app.run()
+        self.vis.run()
+        
     

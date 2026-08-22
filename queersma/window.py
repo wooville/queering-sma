@@ -130,10 +130,35 @@ class QSMAWindow(pyglet.window.Window):
             print("\nStream cancelled.")
 
     def update_audio_effect(self, data):
+        # spectrum = np.fft.fft(data) 
+        # amplitudes = np.abs(spectrum) / 2048
+        frequencies = np.fft.fftfreq(len(data), 1/44100) 
+        positive_indices = frequencies >= 0
+
+        dft_int = np.abs(np.fft.fft(data)).astype(int)
+        freqs_to_plot = frequencies[positive_indices]
+        # amps_to_plot = amplitudes[positive_indices] * 2
+        # real_int = spectrum.real.astype(int)
+        # imag_int = spectrum.imag.astype(int)
+
+        width = self.sim.environment_map.shape[0]
+        height = self.sim.environment_map.shape[1]
+        
+        # print(freqs_to_plot[i])
         volume_norm = np.linalg.norm(data)
+        for mag in dft_int:
+            print((mag%width)[0])
+            self.sim.environment_map[(mag%width)[0],(mag%height)[0],2] = np.uint8(self.sim.environment_map[:,:,2]+volume_norm*10)
+        
         # self.sim.params["step_size"] = int(100*volume_norm)+10
         self.sim.params["drift_chance"] = volume_norm
-        self.sim.params["agents_number"] = int(5000*volume_norm+500)
+
+        
+        # x = (x + width) % width
+        # y = (y + height) % height
+
+        # self.sim.environment_map[max(spectrum[:]),max(spectrum[:]),2] = np.uint8(self.sim.environment_map[:,:,2]+volume_norm*1000)
+        # self.sim.params["agents_number"] = max(0, 1000-int(volume_norm*1000))
         # self.sim.agents
         self.update_agents()
 

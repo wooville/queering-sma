@@ -14,11 +14,11 @@ import queue
 import sys
 import sounddevice
 import threading
-
 import math
 import random
 import numpy
 import sounddevice
+import json
 
 import blinker
 from blinker import signal
@@ -30,6 +30,10 @@ elif current_os == "Darwin":
     pyglet.options.dpi_scaling = "stretch"
 elif current_os == "Linux":
     pyglet.options.dpi_scaling = "real"
+
+import time
+import trimesh
+import viser
 
 # from pyglet.window import key
 # from pyglet.gl import *
