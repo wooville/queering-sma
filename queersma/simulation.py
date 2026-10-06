@@ -167,6 +167,7 @@ class QSMASimulation():
             zp1 = min(depth - 1, z + 1)
 
             # linear combination of 4 points around target (bilinear filtering)
+            # return an averaged value "around" the sensed point to indicate the trail weight in this direction
             x0 = self.environment_map[x, y, z] * (1.0 - fx) + self.environment_map[xp1, y, z] * fx
             x1 = self.environment_map[x, y, zp1] * (1.0 - fx) + self.environment_map[xp1, y, zp1] * fx
 
