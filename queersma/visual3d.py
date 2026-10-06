@@ -7,10 +7,9 @@ from .helpers import *
 class QSMAVisual3D():
     def __init__(self, sim):
         self.sim = sim
-        rng = np.random.default_rng()
         server = viser.ViserServer()
         
-        # Add the point cloud to the scene.
+        # Add the point cloud of agents to the scene
         agents_pcd = server.scene.add_point_cloud(
             name="/agents_cloud",
             position=(0,0,0),
@@ -22,6 +21,7 @@ class QSMAVisual3D():
         )
 
         # env_row, env_col, env_depth = np.indices((self.sim.width,self.sim.height,self.sim.depth))
+        # instantiate trail cloud
         env_pts = np.argwhere(self.sim.environment_map>60)
         env_pcd = server.scene.add_point_cloud(
                     name="/environment_cloud",
@@ -36,28 +36,18 @@ class QSMAVisual3D():
         print("Open your browser to http://localhost:8080")
         print("Press Ctrl+C to exit")
 
-        # I was trying to draw line segments
-        # agent_points_buffer = agents_pcd.points
-        # colors = rng.integers(low=1, high=255, size=(1000, 2, 3))
+        # currently serves as the main update loop for the simulation
         while True:
-            # agent_points_buffer = agents_pcd.points
             self.sim.update(1/60)
-            # print(np.nonzero(self.sim.environment_map))
+
+            # only render trails of intensity > threshold -> grab those pts
             env_pts = np.argwhere(self.sim.environment_map>120)
-            # print(env_pts.shape)
+
+            # update rendered trails
             env_pcd.points = np.array([[p[0], p[1], p[2]] for p in env_pts])
             env_pcd.colors = np.array([[0, self.sim.environment_map[p[0], p[1], p[2]], 0] for p in env_pts])
 
-            # agents_pcd.points = np.array([[agent.x, agent.y, agent.z] for agent in self.sim.agents])
+            # update rendered agent positions
             agents_pcd.points = np.array([agent.position for agent in self.sim.agents])
-            # env_pcd.colors = np.array([[p, p, p] for p in self.sim.environment_map])
-
-            # print(np.stack([agents_pcd.points,agent_points_buffer], 1).shape)
-            # server.scene.add_line_segments(
-            #     "/trail_segments",
-            #     points=np.stack([agent_points_buffer, agents_pcd.points], 1),
-            #     colors=colors,
-            #     thickness=0.03,
-            # )
 
             time.sleep(1/60)

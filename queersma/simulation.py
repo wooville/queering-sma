@@ -202,4 +202,4 @@ class QSMASimulation():
         
         # deposit trail at point (x, y) (represented with a color value for visualization)
         def deposit(self, pos):
-            self.environment_map[int(pos[0])][int(pos[1])][int(pos[2])] = self.color[1]
+            self.environment_map[int(pos[0])][int(pos[1])][int(pos[2])] = self.color[1] # deposit whatever the "green" value of the agent's color is as the trail intensity
