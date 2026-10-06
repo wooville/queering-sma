@@ -6,6 +6,7 @@ from . import signal
 from . import pyglet
 from .helpers import *
 
+# only used as a fallback
 sim_params_default = {
     "width": 400,
     "height": 400,
@@ -25,7 +26,7 @@ sim_params_default = {
 
 class QSMASimulation():
     def __init__(self, signals, params = sim_params_default):
-        self.params = params
+        self.params = params # will load from params file if provided
         self.signals = signals
         # self.signals['agents_number_changed'].connect(self.update_agents_number)
         self.restart()
