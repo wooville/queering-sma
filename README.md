@@ -3,10 +3,14 @@ This is (currently) a simple Python program that simulates [the multi-agent mode
 
 Examples of similar projects can be found [here](https://apps.amandaghassaei.com/gpu-io/examples/physarum/#:~:text=This%20app%20simulates%20the%20network,Written%20by%20Amanda%20Ghassaei) and [here](https://www.sagejenson.com/36points/).
 
-The simulation is managed and visualized in a window using the pyglet library. The imgui-bundle library is used to provide a simple user interface for adjusting the parameters of the simulation in real-time. The parameter values have a dramatic affect on agent behaviour.
+The 2D version of the simulation is managed and visualized in a window using pyglet, and imgui-bundle is used to provide a simple user interface for adjusting the parameters of the simulation in real-time. The parameter values have a dramatic affect on agent behaviour.
+
+The 3D version of the simulation (available in the '3d' branch) expands the agents and the environment into 3 dimensions. It is visualized using [viser](https://viser.studio/main/).
 
 ## Explanation
 The simulation is comprised of many individual "agents" (pixels) that move around a 2D space (an image). As the agents move, they leave a "trail" behind them; agents attempt to detect and follow the trails around them based on an adjustable set of parameters, determining their choice of direction at each step of the simulation. In this way, the simulation attempts to model the [cytoplasmic flow and networking behaviour of real-life slime mold](https://en.wikipedia.org/wiki/Physarum_polycephalum). Visualization of the agents and (especially) the trails they leave behind demonstrates varied and emergent pattern formation.
+
+In the 3D version of the simulation, the environment is expanded to a 3D space (a cube). Agents are equipped with more sensors to allow them to sense trails above and below them. The agents and their trails are rendered in a web browser using viser. They are represented as point clouds; in this version of the simulation, agents deposit their 'green' RGB channel and they are rendered accordingly as green points that decay over time.
 
 An interactive explanation of the algorithm is available [here](https://denizbicer.com/202408-UnderstandingPhysarum.html), and a concise diagram explanation from Sage Jenson can be found [here](https://payload.cargocollective.com/1/18/598881/13800048/diagram_670.jpg).
 
@@ -57,3 +61,5 @@ An interactive explanation of the algorithm is available [here](https://denizbic
    ```
    python main.py
    ```
+3. (3D only) Open your browser to http://localhost:8080
+4. Press Ctrl+C in the terminal to exit
