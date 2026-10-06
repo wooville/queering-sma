@@ -54,7 +54,6 @@ class QSMASimulation():
             [self.width, self.height, self.depth], dtype=np.uint8
         )
 
-        # self.environment_map[:,:,:] = 255
         # create our agents according to parameters
         self.agents = np.empty(self.params["agents_number"], self.Agent)
         for i in range(self.params["agents_number"]):
@@ -67,15 +66,12 @@ class QSMASimulation():
         # every time we create an Agent, we first initialize it based on this function
         def __init__(self, params, environment_map):
             # this code spawns agents exactly in the middle of the window
-            # self.x = window.width / 2
-            # self.y = window.height / 2
-            # self.direction = math.pi
             self.params = params
             self.environment_map = environment_map
             
             # Here, we initialize this individual agent's important variables (current position and direction)
             # These self.variable values are accessible in our other functions after this point
-            # this code spawns agents randomly near the center of the window
+            # this code spawns agents randomly near the center of the environment
             x = random.randint(environment_map.shape[0] // 2 - environment_map.shape[0] // 16, environment_map.shape[0] // 2 + environment_map.shape[0] // 16)
             y = random.randint(environment_map.shape[1] // 2 - environment_map.shape[1] // 16, environment_map.shape[1] // 2 + environment_map.shape[1] // 16)
             z = random.randint(environment_map.shape[2] // 2 - environment_map.shape[2] // 16, environment_map.shape[2] // 2 + environment_map.shape[2] // 16)
@@ -95,35 +91,40 @@ class QSMASimulation():
         
         # decide on a new direction based on sensor data
         def update_direction(self, dt):
-            # Read trail
+            # angles for 4 sensors
             leftAngle = self.angle[0] + self.params["sensor_angle"]
             rightAngle = self.angle[0] - self.params["sensor_angle"]
             topAngle = self.angle[1] + self.params["sensor_angle"]
             downAngle = self.angle[1] - self.params["sensor_angle"]
 
-            # 3D
+            # sensor positions to read from based on angles
             frontPos =		self.position + np.asarray([math.cos(self.angle[1]) * math.cos(self.angle[0]), math.sin(self.angle[1]) * math.cos(self.angle[0]), math.sin(self.angle[0])]) * self.params["sensor_offset"]
             frontLeftPos =	self.position + np.asarray([math.cos(self.angle[0]) * math.cos(leftAngle), math.sin(self.angle[1]) * math.cos(leftAngle), math.sin(leftAngle)]) * self.params["sensor_offset"]
             frontRightPos =	self.position + np.asarray([math.cos(self.angle[1]) * math.cos(rightAngle), math.sin(self.angle[1]) * math.cos(rightAngle), math.sin(rightAngle)]) * self.params["sensor_offset"]
             frontTop =		self.position + np.asarray([math.cos(topAngle) * math.cos(self.angle[0]), math.sin(topAngle) * math.cos(self.angle[0]), math.sin(self.angle[0])]) * self.params["sensor_offset"]
             frontDown =		self.position + np.asarray([math.cos(downAngle) * math.cos(self.angle[0]), math.sin(downAngle) * math.cos(self.angle[0]), math.sin(self.angle[0])]) * self.params["sensor_offset"]
-            
+
+            # read trail with 5 sensors
             F = self.sense_pos(frontPos)
             FL = self.sense_pos(frontLeftPos)
             FR = self.sense_pos(frontRightPos)
             FT = self.sense_pos(frontTop)
             FD = self.sense_pos(frontDown)
 
-            # Get new position
+            # Get new angle by comparing sensor values
+            # but first, check if random drift
             if (np.random.rand() < self.params["drift_chance"]):
-                # RandomRotation
                 self.angle[0] += self.params["turn_angle"]# * RandomSign(id.x + _AbsoluteTime)
                 self.angle[1] += self.params["turn_angle"]# * RandomSign(id.x + 254 + _AbsoluteTime)
             else:
+                # default to angling forward
                 maxIndex = 0
                 maxValue = F
-                trailThreshold = 1.0# - _TrailRepulsion
 
+                # min sensed value for trail to be significant
+                trailThreshold = 1.0# - trailRepulsion
+
+                # angle towards max value
                 if (FL > maxValue and FL < trailThreshold): 
                     maxIndex = 1
                     maxValue = FL
@@ -145,6 +146,7 @@ class QSMASimulation():
                 if (maxIndex == 3): self.angle[1] += self.params["turn_angle"]
                 if (maxIndex == 4): self.angle[1] -= self.params["turn_angle"]
 
+        # sense environment_map value at position
         def sense_pos(self, pos):
             width = self.environment_map.shape[0]
             height = self.environment_map.shape[1]
@@ -163,6 +165,7 @@ class QSMASimulation():
             yp1 = min(height - 1, y + 1)
             zp1 = min(depth - 1, z + 1)
 
+            # linear combination of 4 points around target (bilinear filtering)
             x0 = self.environment_map[x, y, z] * (1.0 - fx) + self.environment_map[xp1, y, z] * fx
             x1 = self.environment_map[x, y, zp1] * (1.0 - fx) + self.environment_map[xp1, y, zp1] * fx
 
@@ -174,12 +177,12 @@ class QSMASimulation():
 
             return z0 * (1.0 - fy) + z1 * fy
         
-        # move self one step and update agent sprite
+        # move self one step based on current angle
         def update_position(self, dt):
+            # calculate new position
             newPos = self.position + np.asarray([math.cos(self.angle[1]) * math.cos(self.angle[0]), math.sin(self.angle[1]) * math.cos(self.angle[0]), math.sin(self.angle[0])]) * self.params["step_size"]
 
-            # Check boundaries
-            # 3D Cube
+            # check boundaries within the cube of the environment_map
             width = self.environment_map.shape[0]
             height = self.environment_map.shape[1]
             depth = self.environment_map.shape[2]
@@ -190,25 +193,13 @@ class QSMASimulation():
             if (newPos[1] < 0): newPos[1] = height - 1
             if (newPos[2] < 0): newPos[2] = depth - 1
 
-            # 3D Sphere
-            # inside = inside_sphere(newPos, _Size * 0.5f, _Size.x * 0.5);
-            # RandomRotation
-            # self.angle[0] += (self.params["turn_angle"]# * RandomSign(id.x + _AbsoluteTime)) * (1 - inside);
-            # self.angle[1] += (self.params["turn_angle"]# * RandomSign(id.x + 254 + _AbsoluteTime)) * (1 - inside);
-
-            # newPos = newPos * inside + pos * (1 - inside);
-
-            # Move particule
+            # move agent to new position
             self.velocity = newPos - self.position
             self.position = newPos
-            # self.angle = angle
-            # _ParticleBuffer[id.x].color = color;
 
-            # Update trail
-            self.deposit(newPos)#, min(SampleDensityFromPosition(newPos) + _ParticleBuffer[id.x].color, 1))
+            # update trail
+            self.deposit(newPos)
         
         # deposit trail at point (x, y) (represented with a color value for visualization)
         def deposit(self, pos):
             self.environment_map[int(pos[0])][int(pos[1])][int(pos[2])] = self.color[1]
-            # self.environment_map[int(y)][int(x)][0] += 
-            # self.environment_map[int(y)][int(x)][0] += 
