@@ -54,7 +54,7 @@ class QSMASimulation():
             [self.width, self.height, self.depth], dtype=np.uint8
         )
 
-        # create our agents according to parameters
+        # create our agents according to loaded parameters
         self.agents = np.empty(self.params["agents_number"], self.Agent)
         for i in range(self.params["agents_number"]):
             self.agents[i] = self.Agent(self.params, self.environment_map)
