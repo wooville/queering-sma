@@ -7,6 +7,12 @@ The 2D version of the simulation is managed and visualized in a window using pyg
 
 The 3D version of the simulation (available in the '3d' branch) expands the agents and the environment into 3 dimensions. It is visualized using [viser](https://viser.studio/main/).
 
+## Screenshots
+
+<img width="640" height="640" alt="image" src="https://github.com/user-attachments/assets/a32ff0a2-8341-47fe-8294-c26d24ac15b2" />
+<img width="640" height="640" alt="image" src="https://github.com/user-attachments/assets/d7e7dd14-0adf-416c-b12a-91272b976458" />
+<img width="640" height="640" alt="image" src="https://github.com/user-attachments/assets/78a57814-1b03-4fe9-8928-eac8ea16fc6e" />
+
 ## Explanation
 The simulation is comprised of many individual "agents" (pixels) that move around a 2D space (an image). As the agents move, they leave a "trail" behind them; agents attempt to detect and follow the trails around them based on an adjustable set of parameters, determining their choice of direction at each step of the simulation. In this way, the simulation attempts to model the [cytoplasmic flow and networking behaviour of real-life slime mold](https://en.wikipedia.org/wiki/Physarum_polycephalum). Visualization of the agents and (especially) the trails they leave behind demonstrates varied and emergent pattern formation.
 
@@ -14,10 +20,7 @@ In the 3D version of the simulation, the environment is expanded to a 3D space (
 
 An interactive explanation of the algorithm is available [here](https://denizbicer.com/202408-UnderstandingPhysarum.html), and a concise diagram explanation from Sage Jenson can be found [here](https://payload.cargocollective.com/1/18/598881/13800048/diagram_670.jpg).
 
-## Screenshots
 
-<img width="640" height="640" alt="image" src="https://github.com/user-attachments/assets/a32ff0a2-8341-47fe-8294-c26d24ac15b2" />
-<img width="640" height="640" alt="image" src="https://github.com/user-attachments/assets/d7e7dd14-0adf-416c-b12a-91272b976458" />
 
 ## Glossary
 - **Program**: a catch-all term very broadly referring to a list of instructions that we want a computer to perform; in our case, our main.py file is a Python script, which is a type of program
