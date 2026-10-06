@@ -7,16 +7,16 @@ from . import pyglet
 from .helpers import *
 
 sim_params_default = {
-    "width": 800,
-    "height": 800,
-    "depth": 800,
-    "agents_number": 1000,
+    "width": 400,
+    "height": 400,
+    "depth": 400,
+    "agents_number": 800,
     "max_time_scale_factor": 1,
     "step_size": 10,
     "sensor_offset": 10,
     "sensor_angle": 0.25,
     "turn_angle": 0.111,
-    "trail_decay": 0.15,
+    "trail_decay": 0.9,
     "wander_chance": 0.003,
     "wander_weight": 0.5,
     "drift_chance": 0.05,
@@ -33,7 +33,8 @@ class QSMASimulation():
     def update(self, dt):
         decay_dt = dt*self.params["trail_decay"]
 
-        self.environment_map *= (1-decay_dt)
+        self.environment_map[:] = np.uint8(self.environment_map*(1-decay_dt))
+        # self.environment_map *= (1-decay_dt)
 
         for agent in self.agents:
             if (agent is not None): agent.update(dt)
@@ -50,7 +51,7 @@ class QSMASimulation():
         # ie, we are ultimately interpreting every input into an image (environment_map) to run our simulation on
         # cube of uint8s
         self.environment_map = np.zeros(
-            [self.width, self.height, self.depth], dtype=np.float32
+            [self.width, self.height, self.depth], dtype=np.uint8
         )
 
         # self.environment_map[:,:,:] = 255
@@ -208,6 +209,6 @@ class QSMASimulation():
         
         # deposit trail at point (x, y) (represented with a color value for visualization)
         def deposit(self, pos):
-            self.environment_map[int(pos[0])][int(pos[1])][int(pos[2])] = self.color[2]
+            self.environment_map[int(pos[0])][int(pos[1])][int(pos[2])] = self.color[1]
             # self.environment_map[int(y)][int(x)][0] += 
             # self.environment_map[int(y)][int(x)][0] += 
